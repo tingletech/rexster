@@ -110,17 +110,6 @@ public class GraphResource extends AbstractSubResource {
 
     @HEAD
     @Path("{extension: (?!vertices)(?!edges)(?!indices)(?!prefixes).+}")
-    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
-    public Response headGraphExtension(@PathParam("graphname") String graphName, MultivaluedMap<String, String> formParams) {
-        // initializes the request object with the data POSTed to the resource.  URI parameters
-        // will then be ignored when the getRequestObject is called as the request object will
-        // have already been established.
-        this.buildRequestObject(formParams);
-        return this.executeGraphExtension(graphName, HttpMethod.HEAD);
-    }
-
-    @HEAD
-    @Path("{extension: (?!vertices)(?!edges)(?!indices)(?!prefixes).+}")
     @Consumes(MediaType.APPLICATION_JSON)
     public Response headGraphExtension(@PathParam("graphname") String graphName, JSONObject json) {
         this.setRequestObject(json);
@@ -131,17 +120,6 @@ public class GraphResource extends AbstractSubResource {
     @Path("{extension: (?!vertices)(?!edges)(?!indices)(?!prefixes).+}")
     public Response headGraphExtension(@PathParam("graphname") String graphName) {
         return this.executeGraphExtension(graphName, HttpMethod.HEAD);
-    }
-
-    @PUT
-    @Path("{extension: (?!vertices)(?!edges)(?!indices)(?!prefixes).+}")
-    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
-    public Response putGraphExtension(@PathParam("graphname") String graphName, MultivaluedMap<String, String> formParams) {
-        // initializes the request object with the data POSTed to the resource.  URI parameters
-        // will then be ignored when the getRequestObject is called as the request object will
-        // have already been established.
-        this.buildRequestObject(formParams);
-        return this.executeGraphExtension(graphName, HttpMethod.PUT);
     }
 
     @PUT
@@ -160,17 +138,6 @@ public class GraphResource extends AbstractSubResource {
 
     @OPTIONS
     @Path("{extension: (?!vertices)(?!edges)(?!indices)(?!prefixes).+}")
-    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
-    public Response optionsGraphExtension(@PathParam("graphname") String graphName, MultivaluedMap<String, String> formParams) {
-        // initializes the request object with the data POSTed to the resource.  URI parameters
-        // will then be ignored when the getRequestObject is called as the request object will
-        // have already been established.
-        this.buildRequestObject(formParams);
-        return this.executeGraphExtension(graphName, HttpMethod.OPTIONS);
-    }
-
-    @OPTIONS
-    @Path("{extension: (?!vertices)(?!edges)(?!indices)(?!prefixes).+}")
     @Consumes(MediaType.APPLICATION_JSON)
     public Response optionsGraphExtension(@PathParam("graphname") String graphName, JSONObject json) {
         this.setRequestObject(json);
@@ -185,17 +152,6 @@ public class GraphResource extends AbstractSubResource {
 
     @DELETE
     @Path("{extension: (?!vertices)(?!edges)(?!indices)(?!prefixes).+}")
-    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
-    public Response deleteGraphExtension(@PathParam("graphname") String graphName, MultivaluedMap<String, String> formParams) {
-        // initializes the request object with the data POSTed to the resource.  URI parameters
-        // will then be ignored when the getRequestObject is called as the request object will
-        // have already been established.
-        this.buildRequestObject(formParams);
-        return this.executeGraphExtension(graphName, HttpMethod.DELETE);
-    }
-
-    @DELETE
-    @Path("{extension: (?!vertices)(?!edges)(?!indices)(?!prefixes).+}")
     @Consumes(MediaType.APPLICATION_JSON)
     public Response deleteGraphExtension(@PathParam("graphname") String graphName, JSONObject json) {
         this.setRequestObject(json);
@@ -206,17 +162,6 @@ public class GraphResource extends AbstractSubResource {
     @Path("{extension: (?!vertices)(?!edges)(?!indices)(?!prefixes).+}")
     public Response deleteGraphExtension(@PathParam("graphname") String graphName) {
         return this.executeGraphExtension(graphName, HttpMethod.DELETE);
-    }
-
-    @POST
-    @Path("{extension: (?!vertices)(?!edges)(?!indices)(?!prefixes).+}")
-    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
-    public Response postGraphExtension(@PathParam("graphname") String graphName, MultivaluedMap<String, String> formParams) {
-        // initializes the request object with the data POSTed to the resource.  URI parameters
-        // will then be ignored when the getRequestObject is called as the request object will
-        // have already been established.
-        this.buildRequestObject(formParams);
-        return this.executeGraphExtension(graphName, HttpMethod.POST);
     }
 
     @POST
@@ -294,6 +239,12 @@ public class GraphResource extends AbstractSubResource {
                 throw wae;
             } catch (Exception ex) {
                 logger.error("Dynamic invocation of the [" + extensionSegmentSet + "] extension failed.", ex);
+                
+                if (ex.getCause() != null) {
+                    Throwable cause = ex.getCause();
+                    logger.error("It would be smart to trap this this exception within the extension and supply a good response to the user:" + cause.getMessage(), cause);
+                }
+                
                 JSONObject error = generateErrorObjectJsonFail(ex);
                 throw new WebApplicationException(Response.status(Status.INTERNAL_SERVER_ERROR).entity(error).build());
             }

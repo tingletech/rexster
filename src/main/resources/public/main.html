@@ -10,16 +10,9 @@
     <link rel="stylesheet" href="/doghouse/css/dot-luv/jquery-ui-1.8.7.custom.css" type="text/css" media="all"/>
     <!-- the {{inject}} is kind of a hack to allow injection of a small javascript provide by the ToolServlet  -->
     {{inject}}
-    <script type="text/javascript" src="/doghouse/javascript/rexster-lib.js"></script>
+    <script type="text/javascript" src="/doghouse/javascript/require-jquery.js"></script>
+    <script type="text/javascript" src="/doghouse/javascript/main.js"></script>
     <script type="text/javascript" src="/doghouse/javascript/rexster.js"></script>
-    <script type="text/javascript" src="/doghouse/javascript/rexster/history.js"></script>
-    <script type="text/javascript" src="/doghouse/javascript/rexster/server.js"></script>
-    <script type="text/javascript" src="/doghouse/javascript/rexster/ajax.js"></script>
-    <script type="text/javascript" src="/doghouse/javascript/rexster/template/template.js"></script>
-    <script type="text/javascript" src="/doghouse/javascript/rexster/ui/main-menu.js"></script>
-    <script type="text/javascript" src="/doghouse/javascript/rexster/ui/graph.js"></script>
-    <script type="text/javascript" src="/doghouse/javascript/rexster/ui/info.js"></script>
-    <script type="text/javascript" src="/doghouse/javascript/rexster/ui/terminal.js"></script>
 </head>
 <body>
 <div class="unit horizontal-center" style="width:1000px">
@@ -102,6 +95,7 @@
                                 </div>
                             </div>
                         </div>
+
                         <div id="panelExtensionsContainer" style="width:100%">
                             <div class="ui-widget-header ui-corner-top">Extensions</div>
                             <div class="ui-widget-content ui-corner-bottom">
@@ -150,7 +144,7 @@
                         <div class="ui-widget-header ui-corner-top">Browser</div>
                         <div class="ui-widget-content ui-corner-bottom">
                             <div class="pager container make-space" style="font-size:small">
-                                <ul class="unit on-5 columns horizontal-center" style="width:380px">
+                                <ul class="unit on-6 columns horizontal-center" style="width:410px">
                                     <li class="fixed column ui-state-default ui-corner-all pager-button"
                                         style="width:30px" title="First"><a class="ui-icon ui-icon-seek-first"></a></li>
                                     <li class="fixed column ui-state-default ui-corner-all pager-button"
@@ -159,12 +153,16 @@
                                     <li class="fixed column pager-label" style="width:250px;text-align:center"></li>
                                     <li class="fixed column ui-state-default ui-corner-all pager-button"
                                         style="width:30px" title="Next"><a class="ui-icon ui-icon-seek-next"></a></li>
+                                    <li class="fixed column ui-state-default ui-corner-all pager-button"
+                                        style="width:30px" title="Filter"><a class="ui-icon ui-icon-search"></a></li>
+                                    <li class="fixed column ui-state-default ui-corner-all pager-button"
+                                        style="width:30px" title="Remove Filter" style="display:none;"><a class="ui-icon ui-icon-cancel"></a></li>
                                 </ul>
                             </div>
                             <div id="panelBrowserMain">
                             </div>
                             <div class="pager container make-space" style="font-size:small">
-                                <ul class="unit on-5 columns horizontal-center" style="width:380px">
+                                <ul class="unit on-6 columns horizontal-center" style="width:410px">
                                     <li class="fixed column ui-state-default ui-corner-all pager-button"
                                         style="width:30px" title="First"><a class="ui-icon ui-icon-seek-first"></a></li>
                                     <li class="fixed column ui-state-default ui-corner-all pager-button"
@@ -173,6 +171,10 @@
                                     <li class="fixed column pager-label" style="width:250px;text-align:center"></li>
                                     <li class="fixed column ui-state-default ui-corner-all pager-button"
                                         style="width:30px" title="Next"><a class="ui-icon ui-icon-seek-next"></a></li>
+                                    <li class="fixed column ui-state-default ui-corner-all pager-button"
+                                        style="width:30px" title="Filter"><a class="ui-icon ui-icon-search"></a></li>
+                                    <li class="fixed column ui-state-default ui-corner-all pager-button"
+                                        style="width:30px" title="Remove Filter" style="display:none;"><a class="ui-icon ui-icon-cancel" ></a></li>
                                 </ul>
                             </div>
                         </div>
@@ -187,7 +189,7 @@
     	<span style="float:right">Rexster: The Dog House</span>
     </div>
 
-    <div id="dialogForm" title="Rexster Extension">
+    <div id="dialogForm" title="Rexster Extension" style="display:none">
         <div id="dialogFormUri" style="margin-left:10px">
             <form>
                 <fieldset>
@@ -201,6 +203,38 @@
             <h3 style="text-align:center">Loading</h3>
         </div>
         <div id="dialogFormJsonViewer"></div>
+    </div>
+
+    <div id="dialogGraphViz" title="Visualization" style="display:none">
+        <div id="dialogGraphVizStructure" class="unit on-2 columns">
+            <div class="container">
+                <div class="fixed column">
+                    <div id="dialogGraphVizMain" style="position:relative;width:500px;height:475px;margin:auto;overflow:hidden;"></div>
+                </div>
+                <div class="fixed column" style="width:268px">
+                    <div id="dialogGraphVizRight" class="container">
+                    </div>
+                </div>
+            </div>
+            <div class="container">
+                <div class="fixed column span-2" style="width:768px">
+                    <span style="font-size:xx-small">left-click graph elements for details | right-click vertices to traverse | mousewheel to zoom | drag to pan</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="dialogIndices" title="Indices" style="display:none">
+        <form>
+            <fieldset>
+                <label for="dialogFormIndexSelect" >Index</label>
+                <select id="dialogFormIndexSelect" name="dialogFormIndexSelect" class="text ui-widget-content ui-corner-all" style="width:100%"></select>
+                <label for="dialogFormIndexKeyText" >Key</label>
+                <input type="text" id="dialogFormIndexKeyText" name="dialogFormIndexKeyText" class="text ui-widget-content ui-corner-all" style="width:100%"/>
+                <label for="dialogFormIndexValueText" >Value</label>
+                <input type="text" id="dialogFormIndexValueText" name="dialogFormIndexValueText" class="text ui-widget-content ui-corner-all" style="width:100%"/>
+            </fieldset>
+        </form>
     </div>
 </div>
 </body>

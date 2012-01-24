@@ -10,6 +10,30 @@ All releases can be accessed through the TinkerPop Maven2 repository identified 
 
 ==<hr/>==
 
+h3. Version 0.8 (NOT OFFICIALLY RELEASED YET)
+
+```xml
+ <dependency>
+  <groupId>com.tinkerpop</groupId>
+  <artifactId>rexster</artifactId>
+  <version>0.8-SNAPSHOT</version>
+</dependency>
+```
+
+* Added @PUT@ to the Indices resource to place elements in an index.  This changes split this functionality away from @POST@.  @POST@ is now only for creating new indices.
+* @DELETE@ of index elements now accepts parameters to be sent as an entity on the request.
+* Fix PermGen issues with Gremlin processing.  This is bit of a stop gap fix in that it simply resets the engine after so many script executions.
+* The Gremlin Extension now includes a @language@ parameter so that one can specify the flavor of Gremlin that is being used.
+* Gremlin Extension takes a @params@ extension and applies the keys and values within it to the bindings of the Gremlin script engine.
+* Dog House uses require.js for module loading.
+* Simple graph visualization through "JIT":http://thejit.org.
+* Dog House provides a filter option when browsing vertices and edges.  Filters are backed by indices such that the user can select an index then specify a key/value to filter the paged results by.
+* Dropped support for support for @application/x-www-form-urlencoded@.
+* Basic authentication configurable through @rexster.xml@ and extensible via extensions to @AbstractSecurityFilter@.
+* Corrected issues with null values being passed to Gremlin Extension as bindings.
+
+==<hr/>==
+
 !https://github.com/tinkerpop/rexster/raw/master/doc/images/rexster-brian.png!
 
 h3. Version 0.7 (Brian -- December 7, 2011)
@@ -39,6 +63,7 @@ h3. Version 0.7 (Brian -- December 7, 2011)
 ** Launch extensions that can be accessed with a GET and that return JSON.
 * Dog House is kinder to SailGraph implementations (generally cosmetic changes).
 * Rexster Console only hosts Gremlin-flavored script engine implementations.  Currently, that means that @gremlin-groovy@ is the only exposed language.
+* Allow configuration of the Rexster server host in @rexster.xml@.
 
 ==<hr/>==
 

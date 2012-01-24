@@ -131,7 +131,6 @@ public class VertexResourceTest {
 
         JSONObject json = (JSONObject) response.getEntity();
         Assert.assertTrue(json.has(Tokens.QUERY_TIME));
-        Assert.assertTrue(json.optDouble(Tokens.QUERY_TIME) > 0);
 
         Assert.assertTrue(json.has(Tokens.RESULTS));
         Assert.assertFalse(json.isNull(Tokens.RESULTS));
@@ -438,47 +437,6 @@ public class VertexResourceTest {
     }
 
     @Test
-    public void postNullVertexRexsterConsumesUrlEncodedAcceptJsonValid() {
-        final HashMap<String, Object> parameters = generateVertexParametersToPost(true);
-
-        final MultivaluedMap<String, String> formParams = new MultivaluedMapImpl();
-        for (String key : parameters.keySet()) {
-            formParams.add(key, parameters.get(key).toString());
-        }
-
-        final Graph graph = this.mockery.mock(Graph.class);
-        final RexsterApplicationGraph rag = new RexsterApplicationGraph("graph", graph);
-        final RexsterApplicationProvider rap = this.mockery.mock(RexsterApplicationProvider.class);
-
-        final UriInfo uri = this.mockery.mock(UriInfo.class);
-        final HttpServletRequest httpServletRequest = this.mockery.mock(HttpServletRequest.class);
-        final Vertex v = new MockVertex("1");
-
-        final Request jsr311Request = this.mockery.mock(Request.class);
-        final Variant variantJson = new Variant(MediaType.APPLICATION_JSON_TYPE, null, null);
-
-        this.mockery.checking(new Expectations() {{
-            allowing(httpServletRequest).getParameterMap();
-            will(returnValue(parameters));
-            allowing(graph).getVertex(with(any(Object.class)));
-            will(returnValue(null));
-            allowing(graph).addVertex(with(any(Object.class)));
-            will(returnValue(v));
-            allowing(rap).getApplicationGraph(with(any(String.class)));
-            will(returnValue(rag));
-            allowing(jsr311Request).selectVariant(with(any(List.class)));
-            will(returnValue(variantJson));
-            allowing(uri).getAbsolutePath();
-            will(returnValue(requestUriPath));
-        }});
-
-        VertexResource resource = new VertexResource(uri, httpServletRequest, rap);
-        Response response = resource.postNullVertexRexsterConsumesUrlEncoded(jsr311Request, "graph", formParams);
-
-        assertPostVertexProducesJson(response, false, false);
-    }
-
-    @Test
     public void postNullVertexOnUriAcceptRexsterJsonValid() {
         final HashMap<String, Object> parameters = generateVertexParametersToPost(true);
 
@@ -594,48 +552,6 @@ public class VertexResourceTest {
     }
 
     @Test
-    public void postNullVertexRexsterConsumesUrlEncodedAcceptRexsterJsonValid() {
-        final HashMap<String, Object> parameters = generateVertexParametersToPost(true);
-
-        final MultivaluedMap<String, String> formParams = new MultivaluedMapImpl();
-        for (String key : parameters.keySet()) {
-            formParams.add(key, parameters.get(key).toString());
-        }
-
-        final Graph graph = this.mockery.mock(Graph.class);
-        final RexsterApplicationGraph rag = new RexsterApplicationGraph("graph", graph);
-        initializeExtensionConfigurations(rag);
-        final RexsterApplicationProvider rap = this.mockery.mock(RexsterApplicationProvider.class);
-
-        final UriInfo uri = this.mockery.mock(UriInfo.class);
-        final HttpServletRequest httpServletRequest = this.mockery.mock(HttpServletRequest.class);
-        final Vertex v = new MockVertex("1");
-
-        final Request jsr311Request = this.mockery.mock(Request.class);
-        final Variant variantJson = new Variant(RexsterMediaType.APPLICATION_REXSTER_JSON_TYPE, null, null);
-
-        this.mockery.checking(new Expectations() {{
-            allowing(httpServletRequest).getParameterMap();
-            will(returnValue(parameters));
-            allowing(graph).getVertex(with(any(Object.class)));
-            will(returnValue(null));
-            allowing(graph).addVertex(with(any(Object.class)));
-            will(returnValue(v));
-            allowing(rap).getApplicationGraph(with(any(String.class)));
-            will(returnValue(rag));
-            allowing(jsr311Request).selectVariant(with(any(List.class)));
-            will(returnValue(variantJson));
-            allowing(uri).getAbsolutePath();
-            will(returnValue(requestUriPath));
-        }});
-
-        VertexResource resource = new VertexResource(uri, httpServletRequest, rap);
-        Response response = resource.postNullVertexRexsterConsumesUrlEncoded(jsr311Request, "graph", formParams);
-
-        assertPostVertexProducesJson(response, true, false);
-    }
-
-@Test
     public void postNullVertexOnUriAcceptRexsterTypedJsonValid() {
         final HashMap<String, Object> parameters = generateVertexParametersToPost(true);
 
@@ -750,49 +666,6 @@ public class VertexResourceTest {
         assertPostVertexProducesJson(response, true, true);
     }
 
-    @Test
-    public void postNullVertexRexsterConsumesUrlEncodedAcceptRexsterTypedJsonValid() {
-        final HashMap<String, Object> parameters = generateVertexParametersToPost(true);
-
-        final MultivaluedMap<String, String> formParams = new MultivaluedMapImpl();
-        for (String key : parameters.keySet()) {
-            formParams.add(key, parameters.get(key).toString());
-        }
-
-        final Graph graph = this.mockery.mock(Graph.class);
-        final RexsterApplicationGraph rag = new RexsterApplicationGraph("graph", graph);
-        initializeExtensionConfigurations(rag);
-        final RexsterApplicationProvider rap = this.mockery.mock(RexsterApplicationProvider.class);
-
-        final UriInfo uri = this.mockery.mock(UriInfo.class);
-        final HttpServletRequest httpServletRequest = this.mockery.mock(HttpServletRequest.class);
-        final Vertex v = new MockVertex("1");
-
-        final Request jsr311Request = this.mockery.mock(Request.class);
-        final Variant variantJson = new Variant(RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON_TYPE, null, null);
-
-        this.mockery.checking(new Expectations() {{
-            allowing(httpServletRequest).getParameterMap();
-            will(returnValue(parameters));
-            allowing(graph).getVertex(with(any(Object.class)));
-            will(returnValue(null));
-            allowing(graph).addVertex(with(any(Object.class)));
-            will(returnValue(v));
-            allowing(rap).getApplicationGraph(with(any(String.class)));
-            will(returnValue(rag));
-            allowing(jsr311Request).selectVariant(with(any(List.class)));
-            will(returnValue(variantJson));
-            allowing(uri).getAbsolutePath();
-            will(returnValue(requestUriPath));
-        }});
-
-        VertexResource resource = new VertexResource(uri, httpServletRequest, rap);
-        Response response = resource.postNullVertexRexsterConsumesUrlEncoded(jsr311Request, "graph", formParams);
-
-        assertPostVertexProducesJson(response, true, true);
-    }
-
-
     @Test(expected = WebApplicationException.class)
     public void postVertexOnUriButHasElementProperties() {
         final HashMap<String, String> parameters = new HashMap<String, String>();
@@ -866,7 +739,6 @@ public class VertexResourceTest {
 
         JSONObject json = (JSONObject) response.getEntity();
         Assert.assertTrue(json.has(Tokens.QUERY_TIME));
-        Assert.assertTrue(json.optDouble(Tokens.QUERY_TIME) > 0);
 
         Assert.assertTrue(json.has(Tokens.RESULTS));
         Assert.assertFalse(json.isNull(Tokens.RESULTS));
@@ -940,7 +812,6 @@ public class VertexResourceTest {
 
         JSONObject json = (JSONObject) response.getEntity();
         Assert.assertTrue(json.has(Tokens.QUERY_TIME));
-        Assert.assertTrue(json.optDouble(Tokens.QUERY_TIME) > 0);
     }
 
     @Test(expected = WebApplicationException.class)
@@ -1002,7 +873,6 @@ public class VertexResourceTest {
 
         JSONObject json = (JSONObject) response.getEntity();
         Assert.assertTrue(json.has(Tokens.QUERY_TIME));
-        Assert.assertTrue(json.optDouble(Tokens.QUERY_TIME) > 0);
 
         Set<String> keys = v.getPropertyKeys();
         Assert.assertEquals(0, keys.size());
@@ -1050,7 +920,6 @@ public class VertexResourceTest {
 
         JSONObject json = (JSONObject) response.getEntity();
         Assert.assertTrue(json.has(Tokens.QUERY_TIME));
-        Assert.assertTrue(json.optDouble(Tokens.QUERY_TIME) > 0);
 
         Assert.assertTrue(json.has(Tokens.RESULTS));
         Assert.assertFalse(json.isNull(Tokens.RESULTS));
@@ -1083,7 +952,6 @@ public class VertexResourceTest {
 
         JSONObject json = (JSONObject) response.getEntity();
         Assert.assertTrue(json.has(Tokens.QUERY_TIME));
-        Assert.assertTrue(json.optDouble(Tokens.QUERY_TIME) > 0);
 
         Assert.assertTrue(json.has(Tokens.TOTAL_SIZE));
         Assert.assertEquals(expectedTotalSize, json.optInt(Tokens.TOTAL_SIZE));
@@ -1162,7 +1030,6 @@ public class VertexResourceTest {
         Assert.assertTrue(json.has(Tokens.TOTAL_SIZE));
         //TODO Assert.assertEquals(numberOfVerticesTotal, json.optInt(Tokens.TOTAL_SIZE));
         Assert.assertTrue(json.has(Tokens.QUERY_TIME));
-        Assert.assertTrue(json.optDouble(Tokens.QUERY_TIME) > 0);
 
         Assert.assertTrue(json.has(Tokens.RESULTS));
         Assert.assertFalse(json.isNull(Tokens.RESULTS));

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <rexster>
     <rexster-server-port>8182</rexster-server-port>
+    <rexster-server-host>0.0.0.0</rexster-server-host>
     <rexster-shutdown-port>8183</rexster-shutdown-port>
     <rexster-shutdown-host>127.0.0.1</rexster-shutdown-host>
     <rexpro-server-port>8184</rexpro-server-port>
@@ -9,15 +10,22 @@
     <base-uri>http://localhost</base-uri>
     <web-root>public</web-root>
     <character-set>UTF-8</character-set>
+    <security>
+        <authentication>
+            <type>none</type>
+        </authentication>
+    </security>
     <graphs>
         <graph>
             <graph-name>emptygraph</graph-name>
             <graph-type>tinkergraph</graph-type>
+            <graph-mock-tx>true</graph-mock-tx>
         </graph>
         <graph>
             <graph-name>tinkergraph</graph-name>
             <graph-type>tinkergraph</graph-type>
             <graph-location>data/graph-example-1</graph-location>
+            <graph-mock-tx>true</graph-mock-tx>
             <extensions>
                 <allows>
                     <allow>tp:gremlin</allow>
