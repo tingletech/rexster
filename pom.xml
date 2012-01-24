@@ -183,6 +183,11 @@
             <version>1.11</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.jsonp</groupId>
+            <artifactId>jsonp</artifactId>
+            <version>1.0.1</version>
+        </dependency>
     </dependencies>
     <repositories>
         <repository>
