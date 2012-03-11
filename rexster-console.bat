@@ -1,7 +1,7 @@
 :: Windows launcher script for Rexster Console
 @echo off
 
-cd %CD%\target\
+cd %CD%\rexster-server\target\
 
 set TARGET=
 
@@ -10,6 +10,6 @@ if exist "%%a\bin\rexster-console.bat" set TARGET=%%a
 )
 
 cd %TARGET%\bin\
-call rexster-console.bat localhost 8184 gremlin %*
+call rexster-console.bat %*
 
-target/rexster-*-standalone/bin/rexster-console.bat $@
+cd ..

@@ -1,22 +1,31 @@
-All releases can be accessed through the TinkerPop Maven2 repository identified below.
-
-```xml
-<repository>
-  <id>tinkerpop-repository</id>
-  <name>TinkerPop Maven2 Repository</name>
-  <url>http://tinkerpop.com/maven2</url>
-</repository>
-```
+Rexster: A Graph Server
+"http://rexster.tinkerpop.com":http://rexster.tinkerpop.com
 
 ==<hr/>==
 
-h3. Version 0.8 (NOT OFFICIALLY RELEASED YET)
+h3. Version 0.9 (NOT OFFICIALLY RELEASED YET)
 
 ```xml
- <dependency>
-  <groupId>com.tinkerpop</groupId>
+<dependency>
+  <groupId>com.tinkerpop.rexster</groupId>
   <artifactId>rexster</artifactId>
-  <version>0.8-SNAPSHOT</version>
+  <version>0.9-SNAPSHOT</version>
+</dependency>
+```
+
+* REST API for POSTing new indices supports @params@ argument which constructs a parameter map which will configure the newly created index.
+
+==<hr/>==
+
+!https://github.com/tinkerpop/rexster/raw/master/doc/images/rexster-santas-little-helper.png!
+
+h3. Version 0.8 (Santa's Little Helper -- February 28, 2012)
+
+```xml
+<dependency>
+  <groupId>com.tinkerpop.rexster</groupId>
+  <artifactId>rexster</artifactId>
+  <version>0.8</version>
 </dependency>
 ```
 
@@ -30,7 +39,17 @@ h3. Version 0.8 (NOT OFFICIALLY RELEASED YET)
 * Dog House provides a filter option when browsing vertices and edges.  Filters are backed by indices such that the user can select an index then specify a key/value to filter the paged results by.
 * Dropped support for support for @application/x-www-form-urlencoded@.
 * Basic authentication configurable through @rexster.xml@ and extensible via extensions to @AbstractSecurityFilter@.
-* Corrected issues with null values being passed to Gremlin Extension as bindings.
+* Better handling of null values being passed to Gremlin Extension as bindings.
+* Allow configuration of the Rexster server host in @rexster.xml@.
+* Launching an extension from Dog House that fails now properly removes the "Loading" spinner and displays the error.
+* Encode the URI for extensions launched in Dog House so that they are properly encoded for cut and paste use.
+* Added a mock @TransactionalGraph@ implementation so that a @TinkerGraph@ can be tested in a transactional mode (configured through @rexster.xml@).
+* Results from the Gremlin Extension that are @Iterator@ implementations are now paging properly.
+* Added the @load@ parameter to the Gremlin Extension so that it is possible to execute server-side stored Gremlin scripts.
+* Gremlin Extension can be configured so that it does not execute scripts sent on the @script@ parameter leaving it to only process server-side scripts with the @load@ parameter.
+* Gremlin Extension can be configured to cache server-side scripts.
+* Sample Kibble
+** Secure Sample Kibble shows how to get a @Principal@ from the @SecurityContext@.
 
 ==<hr/>==
 
@@ -39,7 +58,7 @@ h3. Version 0.8 (NOT OFFICIALLY RELEASED YET)
 h3. Version 0.7 (Brian -- December 7, 2011)
 
 ```xml
- <dependency>
+<dependency>
   <groupId>com.tinkerpop</groupId>
   <artifactId>rexster</artifactId>
   <version>0.7</version>
@@ -63,7 +82,9 @@ h3. Version 0.7 (Brian -- December 7, 2011)
 ** Launch extensions that can be accessed with a GET and that return JSON.
 * Dog House is kinder to SailGraph implementations (generally cosmetic changes).
 * Rexster Console only hosts Gremlin-flavored script engine implementations.  Currently, that means that @gremlin-groovy@ is the only exposed language.
-* Allow configuration of the Rexster server host in @rexster.xml@.
+* Upgrade all Kibbles to use GraphSON.
+* Sample Kibble
+** New Parameters Sample Kibble shows how to deal with injecting different data types into the request.
 
 ==<hr/>==
 
@@ -72,9 +93,29 @@ h3. Version 0.7 (Brian -- December 7, 2011)
 h3. Version 0.6 (Dalmatian -- September 18, 2011)
 
 ```xml
- <dependency>
+<dependency>
   <groupId>com.tinkerpop</groupId>
   <artifactId>rexster</artifactId>
+  <version>0.6</version>
+</dependency>
+<dependency>
+  <groupId>com.tinkerpop</groupId>
+  <artifactId>batch-kibble</artifactId>
+  <version>0.6</version>
+</dependency>
+<dependency>
+  <groupId>com.tinkerpop</groupId>
+  <artifactId>frames-kibble</artifactId>
+  <version>0.6</version>
+</dependency>
+<dependency>
+  <groupId>com.tinkerpop</groupId>
+  <artifactId>sample-kibbles</artifactId>
+  <version>0.6</version>
+</dependency>
+<dependency>
+  <groupId>com.tinkerpop</groupId>
+  <artifactId>sparql-kibble</artifactId>
   <version>0.6</version>
 </dependency>
 ```
@@ -91,6 +132,8 @@ h3. Version 0.6 (Dalmatian -- September 18, 2011)
 ** The REST URI scheme has changed slightly to include a @graphs@ segment, as in: @http://localhost:8182/graphs/tinkergraph@
 * RexPro sessions that remain idle for a configurable amount of time are destroyed.
 * Support OPTIONS HTTP method for all REST resources so that HTTP Access Control works properly when used (eg. jquery).
+* New Batch Kibble makes it possible to execute commands in a batch/transactional fashion.
+* Bring all Kibbles up to the latest version of REST API changes for the current version of Rexster.
 
 ==<hr/>==
 

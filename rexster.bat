@@ -1,7 +1,7 @@
 :: Windows launcher script for Rexster
 @echo off
 
-cd %CD%\target\
+cd %CD%\rexster-server\target\
 
 set TARGET=
 
@@ -11,5 +11,3 @@ if exist "%%a\bin\rexster.bat" set TARGET=%%a
 
 cd %TARGET%\bin\
 call rexster.bat %*
-
-cd ..\..\..

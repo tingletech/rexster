@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.tinkerpop.rexster</groupId>
+        <artifactId>rexster</artifactId>
+        <version>0.9-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+    <artifactId>rexster-kibbles</artifactId>
+    <version>0.9-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <url>http://rexster.tinkerpop.com</url>
+    <name>Rexster Kibbles: General-Purpose Rexster Extensions</name>
+    <description>Rexster Kibbles is a collection of general-purpose extensions for the Rexster graph server.
+    </description>
+    <inceptionYear>2011</inceptionYear>
+    <licenses>
+        <license>
+            <name>BSD 3-Clause</name>
+            <url>http://www.opensource.org/licenses/BSD-3-Clause</url>
+        </license>
+    </licenses>
+    <scm>
+        <connection>scm:git:git@github.com:tinkerpop/rexter-kibbles.git</connection>
+        <developerConnection>scm:git:git@github.com:tinkerpop/rexter-kibbles.git</developerConnection>
+        <url>git@github.com:tinkerpop/rexter-kibbles.git</url>
+    </scm>
+    <contributors>
+        <contributor>
+            <name>Marko A. Rodriguez</name>
+            <email>marko@markorodriguez.com</email>
+            <url>http://markorodriguez.com</url>
+        </contributor>
+        <contributor>
+            <name>Stephen Mallette</name>
+            <email>spmva@genoprime.com</email>
+            <url>http://stephen.genoprime.com</url>
+        </contributor>
+    </contributors>
+    <modules>
+        <module>frames-kibble</module>
+        <module>sample-kibbles</module>
+        <module>sparql-kibble</module>
+        <module>batch-kibble</module>
+    </modules>
+    <build>
+        <directory>${basedir}/target</directory>
+    </build>
+</project>
