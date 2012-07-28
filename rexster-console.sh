@@ -1,3 +1,4 @@
 #!/bin/bash
 
-rexster-server/target/rexster-server-*-standalone/bin/rexster-console.sh $@
+cd rexster-console
+target/rexster-console-*-standalone/bin/rexster-console.sh $@

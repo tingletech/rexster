@@ -1,15 +1,23 @@
 :: Windows launcher script for Rexster
 @echo off
 
-cd ..\lib
-set LIBDIR=%CD%
+set work=%CD%
 
-cd ..\ext
-set EXTDIR=%CD%
+if [%work:~-3%]==[bin] cd ..
 
-cd ..\bin
+set LIBDIR=lib
+set EXTDIR=ext/*
+set PUBDIR=public
 
-set JAVA_OPTIONS=-Xms32M -Xmx512M
+cd ext
+
+FOR /D /r %%i in (*) do (
+    set EXTDIR=%EXTDIR%;%%i/*
+)
+
+cd ..
+
+set JAVA_OPTIONS=-Xms32m -Xmx512m
 
 :: Launch the application
-java %JAVA_OPTIONS% %JAVA_ARGS% -cp %LIBDIR%/*;%EXTDIR%/*  com.tinkerpop.rexster.WebServer %*
+java %JAVA_OPTIONS% %JAVA_ARGS% -cp %LIBDIR%/*;%EXTDIR%;  com.tinkerpop.rexster.WebServer %* -wr %PUBDIR%

@@ -17,6 +17,11 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import java.util.Set;
 
+/**
+ * Root resources for graphs in the REST API.
+ *
+ * @author Stephen Mallette (http://stephen.genoprime.com)
+ */
 @Path("/graphs")
 @Produces({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON, RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
 public class RexsterResource extends BaseResource {
@@ -28,8 +33,8 @@ public class RexsterResource extends BaseResource {
         super(null);
     }
 
-    public RexsterResource(RexsterApplicationProvider rap) {
-        super(rap);
+    public RexsterResource(RexsterApplication ra) {
+        super(ra);
     }
 
     @OPTIONS
@@ -41,7 +46,7 @@ public class RexsterResource extends BaseResource {
     public Response getRexsterRoot() {
         try {
 
-            Set<String> graphNames = this.getRexsterApplicationProvider().getGraphsNames();
+            Set<String> graphNames = this.getRexsterApplication().getGraphNames();
             JSONArray jsonArrayNames = new JSONArray(graphNames);
 
             this.resultObject.put("name", "Rexster: A Graph Server");

@@ -1,8 +1,8 @@
 package com.tinkerpop.rexster;
 
-import com.tinkerpop.blueprints.pgm.Edge;
-import com.tinkerpop.blueprints.pgm.Graph;
-import com.tinkerpop.blueprints.pgm.Vertex;
+import com.tinkerpop.blueprints.Edge;
+import com.tinkerpop.blueprints.Graph;
+import com.tinkerpop.blueprints.Vertex;
 import com.tinkerpop.rexster.extension.ExtensionDefinition;
 import com.tinkerpop.rexster.extension.ExtensionDescriptor;
 import com.tinkerpop.rexster.extension.ExtensionMethod;
@@ -35,37 +35,43 @@ import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 
+/**
+ * Base "sub" resource class which contains helper methods for getting extensions, the RexsterApplicationGraph,
+ * and request object.
+ *
+ * @author Stephen Mallette (http://stephen.genoprime.com)
+ */
 public abstract class AbstractSubResource extends BaseResource {
 
     private static final Logger logger = Logger.getLogger(AbstractSubResource.class);
 
     protected static final Map<ExtensionSegmentSet, List<RexsterExtension>> extensionCache = new HashMap<ExtensionSegmentSet, List<RexsterExtension>>();
 
-    protected AbstractSubResource(RexsterApplicationProvider rap) {
-        super(rap);
+    protected AbstractSubResource(RexsterApplication ra) {
+        super(ra);
 
         try {
 
-            this.resultObject.put(Tokens.VERSION, RexsterApplication.getVersion());
+            this.resultObject.put(Tokens.VERSION, RexsterApplicationImpl.getVersion());
 
         } catch (JSONException ex) {
 
             logger.error(ex);
 
-            JSONObject error = generateErrorObjectJsonFail(ex);
+            final JSONObject error = generateErrorObjectJsonFail(ex);
             throw new WebApplicationException(Response.status(Status.INTERNAL_SERVER_ERROR).entity(error).build());
         }
     }
 
-    public RexsterApplicationGraph getRexsterApplicationGraph(String graphName) {
-        RexsterApplicationGraph rag = this.getRexsterApplicationProvider().getApplicationGraph(graphName);
+    public RexsterApplicationGraph getRexsterApplicationGraph(final String graphName) {
+        final RexsterApplicationGraph rag = this.getRexsterApplication().getApplicationGraph(graphName);
         if (rag == null) {
 
             if (!graphName.equals("favicon.ico")) {
                 logger.info("Request for a non-configured graph [" + graphName + "]");
             }
 
-            JSONObject error = generateErrorObject("Graph [" + graphName + "] could not be found");
+            final JSONObject error = generateErrorObject("Graph [" + graphName + "] could not be found");
             throw new WebApplicationException(Response.status(Status.NOT_FOUND).entity(error).build());
         }
 
@@ -85,15 +91,15 @@ public abstract class AbstractSubResource extends BaseResource {
      *
      * @return The found extension instance or null if one cannot be found.
      */
-    protected static List<RexsterExtension> findExtensionClasses(ExtensionSegmentSet extensionSegmentSet) {
+    protected static List<RexsterExtension> findExtensionClasses(final ExtensionSegmentSet extensionSegmentSet) {
 
         List<RexsterExtension> extensionsForSegmentSet = extensionCache.get(extensionSegmentSet);
         if (extensionsForSegmentSet == null) {
-            ServiceLoader<? extends RexsterExtension> extensions = ServiceLoader.load(RexsterExtension.class);
+            final ServiceLoader<? extends RexsterExtension> extensions = ServiceLoader.load(RexsterExtension.class);
             extensionsForSegmentSet = new ArrayList<RexsterExtension>();
             for (RexsterExtension extension : extensions) {
-                Class clazz = extension.getClass();
-                ExtensionNaming extensionNaming = (ExtensionNaming) clazz.getAnnotation(ExtensionNaming.class);
+                final Class clazz = extension.getClass();
+                final ExtensionNaming extensionNaming = (ExtensionNaming) clazz.getAnnotation(ExtensionNaming.class);
 
                 // initialize the defaults
                 String currentExtensionNamespace = "g";
@@ -137,12 +143,12 @@ public abstract class AbstractSubResource extends BaseResource {
      *
      * @throws WebApplicationException If the segment is an invalid format.
      */
-    protected ExtensionSegmentSet parseUriForExtensionSegment(String graphName, ExtensionPoint extensionPoint) {
-        ExtensionSegmentSet extensionSegmentSet = new ExtensionSegmentSet(this.uriInfo, extensionPoint);
+    protected ExtensionSegmentSet parseUriForExtensionSegment(final String graphName, final ExtensionPoint extensionPoint) {
+        final ExtensionSegmentSet extensionSegmentSet = new ExtensionSegmentSet(this.uriInfo, extensionPoint);
 
         if (!extensionSegmentSet.isValidFormat()) {
             logger.error("Tried to parse the extension segments but they appear invalid: " + extensionSegmentSet);
-            JSONObject error = this.generateErrorObject(
+            final JSONObject error = this.generateErrorObject(
                     "The [" + extensionSegmentSet + "] extension appears invalid for [" + graphName + "]");
             throw new WebApplicationException(Response.status(Status.INTERNAL_SERVER_ERROR).entity(error).build());
         }
@@ -180,7 +186,6 @@ public abstract class AbstractSubResource extends BaseResource {
 
             for (Method method : methods) {
                 // looks for the first method that matches.  methods that multi-match will be ignored right now
-                // todo: we probably need to add some kind of up-front validation of extensions.
                 ExtensionDefinition extensionDefinition = method.getAnnotation(ExtensionDefinition.class);
                 ExtensionDescriptor extensionDescriptor = method.getAnnotation(ExtensionDescriptor.class);
 
@@ -217,31 +222,31 @@ public abstract class AbstractSubResource extends BaseResource {
         return methodToCall;
     }
 
-    protected Object invokeExtension(String graphName, ExtensionMethod methodToCall)
+    protected Object invokeExtension(final RexsterApplicationGraph rexsterApplicationGraph, final ExtensionMethod methodToCall)
             throws IllegalAccessException, InvocationTargetException {
-        return this.invokeExtension(graphName, methodToCall, null, null);
+        return this.invokeExtension(rexsterApplicationGraph, methodToCall, null, null);
     }
 
-    protected Object invokeExtension(String graphName, ExtensionMethod methodToCall, Vertex vertexContext)
+    protected Object invokeExtension(final RexsterApplicationGraph rexsterApplicationGraph, final ExtensionMethod methodToCall, final Vertex vertexContext)
             throws IllegalAccessException, InvocationTargetException {
-        return this.invokeExtension(graphName, methodToCall, null, vertexContext);
+        return this.invokeExtension(rexsterApplicationGraph, methodToCall, null, vertexContext);
     }
 
-    protected Object invokeExtension(String graphName, ExtensionMethod methodToCall, Edge edgeContext)
+    protected Object invokeExtension(final RexsterApplicationGraph rexsterApplicationGraph, final ExtensionMethod methodToCall, final Edge edgeContext)
             throws IllegalAccessException, InvocationTargetException {
-        return this.invokeExtension(graphName, methodToCall, edgeContext, null);
+        return this.invokeExtension(rexsterApplicationGraph, methodToCall, edgeContext, null);
     }
 
-    protected Object invokeExtension(String graphName, ExtensionMethod methodToCall, Edge edgeContext, Vertex vertexContext)
+    protected Object invokeExtension(final RexsterApplicationGraph rexsterApplicationGraph,
+                                     final ExtensionMethod methodToCall, final Edge edgeContext,
+                                     final Vertex vertexContext)
             throws IllegalAccessException, InvocationTargetException {
-        RexsterApplicationGraph rag = this.getRexsterApplicationGraph(graphName);
-        rag.trySetTransactionalModeAutomatic();
 
-        RexsterExtension rexsterExtension = methodToCall.getRexsterExtension();
-        Method method = methodToCall.getMethod();
+        final RexsterExtension rexsterExtension = methodToCall.getRexsterExtension();
+        final Method method = methodToCall.getMethod();
 
-        RexsterResourceContext rexsterResourceContext = new RexsterResourceContext(
-                this.getRexsterApplicationGraph(graphName),
+        final RexsterResourceContext rexsterResourceContext = new RexsterResourceContext(
+                rexsterApplicationGraph,
                 this.uriInfo,
                 this.httpServletRequest,
                 this.getRequestObject(),
@@ -249,18 +254,18 @@ public abstract class AbstractSubResource extends BaseResource {
                 methodToCall,
                 this.securityContext);
 
-        Annotation[][] parametersAnnotations = method.getParameterAnnotations();
-        ArrayList methodToCallParams = new ArrayList();
+        final Annotation[][] parametersAnnotations = method.getParameterAnnotations();
+        final ArrayList methodToCallParams = new ArrayList();
         for (int ix = 0; ix < parametersAnnotations.length; ix++) {
-            Annotation[] annotation = parametersAnnotations[ix];
-            Class[] parameterTypes = method.getParameterTypes();
+            final Annotation[] annotation = parametersAnnotations[ix];
+            final Class[] parameterTypes = method.getParameterTypes();
 
             if (annotation != null) {
                 if (annotation[0] instanceof RexsterContext) {
                     if (parameterTypes[ix].equals(Graph.class)) {
-                        methodToCallParams.add(rag.getGraph());
+                        methodToCallParams.add(rexsterApplicationGraph.getGraph());
                     } else if (parameterTypes[ix].equals(RexsterApplicationGraph.class)) {
-                        methodToCallParams.add(rag);
+                        methodToCallParams.add(rexsterApplicationGraph);
                     } else if (parameterTypes[ix].equals(ExtensionMethod.class)) {
                         methodToCallParams.add(methodToCall);
                     } else if (parameterTypes[ix].equals(UriInfo.class)) {
@@ -280,7 +285,7 @@ public abstract class AbstractSubResource extends BaseResource {
                         methodToCallParams.add(null);
                     }
                 } else if (annotation[0] instanceof ExtensionRequestParameter) {
-                    ExtensionRequestParameter extensionRequestParameter = (ExtensionRequestParameter) annotation[0];
+                    final ExtensionRequestParameter extensionRequestParameter = (ExtensionRequestParameter) annotation[0];
                     if (parameterTypes[ix].equals(String.class)) {
                         if (extensionRequestParameter.parseToJson()) {
                             methodToCallParams.add(this.getRequestObject().optString(extensionRequestParameter.name()));
@@ -376,30 +381,33 @@ public abstract class AbstractSubResource extends BaseResource {
         return method.invoke(rexsterExtension, methodToCallParams.toArray());
     }
 
-    protected ExtensionResponse tryAppendRexsterAttributesIfJson(ExtensionResponse extResponse, ExtensionMethod methodToCall, String mediaType) {
+    protected ExtensionResponse tryAppendRexsterAttributesIfJson(final ExtensionResponse extResponse,
+                                                                 final ExtensionMethod methodToCall,
+                                                                 final String mediaType) {
+        ExtensionResponse newExtensionResponse = extResponse;
         if (mediaType.equals(MediaType.APPLICATION_JSON)
                 && methodToCall.getExtensionDefinition().tryIncludeRexsterAttributes()) {
 
-            Object obj = extResponse.getJerseyResponse().getEntity();
+            final Object obj = extResponse.getJerseyResponse().getEntity();
             if (obj instanceof JSONObject) {
-                JSONObject entity = (JSONObject) obj;
+                final JSONObject entity = (JSONObject) obj;
 
                 if (entity != null) {
                     try {
-                        entity.put(Tokens.VERSION, RexsterApplication.getVersion());
+                        entity.put(Tokens.VERSION, RexsterApplicationImpl.getVersion());
                         entity.put(Tokens.QUERY_TIME, this.sh.stopWatch());
                     } catch (JSONException jsonException) {
                         // nothing bad happening here
                         logger.error("Couldn't add Rexster attributes to response for an extension.");
                     }
 
-                    extResponse = new ExtensionResponse(
+                    newExtensionResponse = new ExtensionResponse(
                             Response.fromResponse(extResponse.getJerseyResponse()).entity(entity).build());
 
                 }
             }
         }
 
-        return extResponse;
+        return newExtensionResponse;
     }
 }

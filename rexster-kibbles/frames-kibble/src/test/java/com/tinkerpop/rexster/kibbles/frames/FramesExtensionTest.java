@@ -1,7 +1,7 @@
 package com.tinkerpop.rexster.kibbles.frames;
 
-import com.tinkerpop.blueprints.pgm.Graph;
-import com.tinkerpop.blueprints.pgm.impls.tg.TinkerGraphFactory;
+import com.tinkerpop.blueprints.Graph;
+import com.tinkerpop.blueprints.impls.tg.TinkerGraphFactory;
 import com.tinkerpop.rexster.RexsterApplicationGraph;
 import com.tinkerpop.rexster.RexsterResourceContext;
 import com.tinkerpop.rexster.extension.ExtensionConfiguration;
@@ -50,9 +50,9 @@ public class FramesExtensionTest {
         sb.append("<configuration>");
         sb.append("<person>com.tinkerpop.frames.domain.classes.Person</person>");
         sb.append("<project>com.tinkerpop.frames.domain.classes.Project</project>");
-        sb.append("<created>com.tinkerpop.frames.domain.relations.Created</created>");
-        sb.append("<createdby>com.tinkerpop.frames.domain.relations.CreatedBy</createdby>");
-        sb.append("<knows>com.tinkerpop.frames.domain.relations.Knows</knows>");
+        sb.append("<created>com.tinkerpop.frames.domain.incidences.Created</created>");
+        sb.append("<createdby>com.tinkerpop.frames.domain.incidences.CreatedBy</createdby>");
+        sb.append("<knows>com.tinkerpop.frames.domain.incidences.Knows</knows>");
         sb.append("<notreal>com.tinkerpop.frames.domain.relations.ThisFrameIsNotReal</notreal>");
         sb.append("</configuration></extension>");
 
@@ -191,7 +191,7 @@ public class FramesExtensionTest {
         // can do a slimmed down RexsterResourceContext
         this.ctx = new RexsterResourceContext(this.rag, uri, null, null, null, null, null);
 
-        ExtensionResponse extResp = this.framesExtension.doFramesWorkOnEdge(this.ctx, this.graph, this.graph.getEdge(11), "standard");
+        ExtensionResponse extResp = this.framesExtension.doFramesWorkOnEdge(this.ctx, this.graph, this.graph.getEdge(11), "in");
 
         Assert.assertNotNull(extResp);
         Assert.assertNotNull(extResp.getJerseyResponse());
@@ -213,7 +213,7 @@ public class FramesExtensionTest {
         // can do a slimmed down RexsterResourceContext
         this.ctx = new RexsterResourceContext(this.rag, uri, null, null, null, null, null);
 
-        ExtensionResponse extResp = this.framesExtension.doFramesWorkOnEdge(this.ctx, this.graph, this.graph.getEdge(11), "standard");
+        ExtensionResponse extResp = this.framesExtension.doFramesWorkOnEdge(this.ctx, this.graph, this.graph.getEdge(11), "in");
 
         Assert.assertNotNull(extResp);
         Assert.assertNotNull(extResp.getJerseyResponse());
@@ -234,7 +234,7 @@ public class FramesExtensionTest {
         // can do a slimmed down RexsterResourceContext
         this.ctx = new RexsterResourceContext(this.rag, uri, null, null, null, null, null);
 
-        ExtensionResponse extResp = this.framesExtension.doFramesWorkOnEdge(this.ctx, this.graph, this.graph.getEdge(11), "standard");
+        ExtensionResponse extResp = this.framesExtension.doFramesWorkOnEdge(this.ctx, this.graph, this.graph.getEdge(11), "in");
 
         Assert.assertNotNull(extResp);
         Assert.assertNotNull(extResp.getJerseyResponse());
@@ -255,7 +255,7 @@ public class FramesExtensionTest {
         // can do a slimmed down RexsterResourceContext
         this.ctx = new RexsterResourceContext(this.rag, uri, null, null, null, null, null);
 
-        ExtensionResponse extResp = this.framesExtension.doFramesWorkOnEdge(this.ctx, this.graph, this.graph.getEdge(11), "standard");
+        ExtensionResponse extResp = this.framesExtension.doFramesWorkOnEdge(this.ctx, this.graph, this.graph.getEdge(11), "in");
 
         Assert.assertNotNull(extResp);
         Assert.assertNotNull(extResp.getJerseyResponse());

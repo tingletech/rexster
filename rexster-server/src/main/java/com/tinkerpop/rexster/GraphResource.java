@@ -1,7 +1,9 @@
 package com.tinkerpop.rexster;
 
-import com.tinkerpop.blueprints.pgm.Graph;
-import com.tinkerpop.blueprints.pgm.util.wrappers.readonly.ReadOnlyGraph;
+import com.tinkerpop.blueprints.Features;
+import com.tinkerpop.blueprints.Graph;
+import com.tinkerpop.blueprints.util.wrappers.WrapperGraph;
+import com.tinkerpop.blueprints.util.wrappers.readonly.ReadOnlyGraph;
 import com.tinkerpop.rexster.extension.ExtensionMethod;
 import com.tinkerpop.rexster.extension.ExtensionPoint;
 import com.tinkerpop.rexster.extension.ExtensionResponse;
@@ -32,17 +34,22 @@ import javax.ws.rs.core.UriInfo;
 import java.util.List;
 import java.util.ServiceConfigurationError;
 
+/**
+ * Resource for graphs.
+ *
+ * @author Stephen Mallette (http://stephen.genoprime.com)
+ */
 @Path("/graphs/{graphname}")
 public class GraphResource extends AbstractSubResource {
 
-    private static Logger logger = Logger.getLogger(GraphResource.class);
+    private static final Logger logger = Logger.getLogger(GraphResource.class);
 
     public GraphResource() {
         super(null);
     }
 
-    public GraphResource(UriInfo ui, HttpServletRequest req, RexsterApplicationProvider rap) {
-        super(rap);
+    public GraphResource(final UriInfo ui, final HttpServletRequest req, final RexsterApplication ra) {
+        super(ra);
         this.httpServletRequest = req;
         this.uriInfo = ui;
     }
@@ -65,12 +72,13 @@ public class GraphResource extends AbstractSubResource {
      */
     @GET
     @Produces({RexsterMediaType.APPLICATION_REXSTER_JSON, RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
-    public Response getGraphProducesRexsterJson(@PathParam("graphname") String graphName) {
+    public Response getGraphProducesRexsterJson(@PathParam("graphname") final String graphName) {
         return getGraph(graphName, true);
     }
 
-    private Response getGraph(String graphName, boolean showHypermedia) {
-        Graph graph = this.getRexsterApplicationGraph(graphName).getGraph();
+    private Response getGraph(final String graphName, final boolean showHypermedia) {
+        final RexsterApplicationGraph rag = this.getRexsterApplicationGraph(graphName);
+        final Graph graph = rag.getGraph();
 
         try {
 
@@ -79,28 +87,31 @@ public class GraphResource extends AbstractSubResource {
 
             boolean isReadOnly = false;
             String graphType = graph.getClass().getName();
-            if (graph instanceof ReadOnlyGraph) {
-                // readonly graphs must unwrap to the underlying graph implementation
-                graphType = ((ReadOnlyGraph) graph).getRawGraph().getClass().getName();
-                isReadOnly = true;
+            if (graph instanceof WrapperGraph) {
+                graphType = ((WrapperGraph) graph).getBaseGraph().getClass().getName();
+
+                if (graph instanceof ReadOnlyGraph) {
+                    isReadOnly = true;
+                }
             }
 
+            final Features features = graph.getFeatures();
+            this.resultObject.put(Tokens.FEATURES, new JSONObject(features.toMap()));
             this.resultObject.put(Tokens.READ_ONLY, isReadOnly);
-            this.resultObject.put("type", graphType);
+            this.resultObject.put(Tokens.TYPE, graphType);
             this.resultObject.put(Tokens.QUERY_TIME, this.sh.stopWatch());
             this.resultObject.put(Tokens.UP_TIME, this.getTimeAlive());
-            this.resultObject.put("version", RexsterApplication.getVersion());
+            this.resultObject.put(Tokens.VERSION, RexsterApplicationImpl.getVersion());
 
             if (showHypermedia) {
-                RexsterApplicationGraph rag = this.getRexsterApplicationGraph(graphName);
-                JSONArray extensionsList = rag.getExtensionHypermedia(ExtensionPoint.GRAPH, this.getUriPath());
+                final JSONArray extensionsList = rag.getExtensionHypermedia(ExtensionPoint.GRAPH, this.getUriPath());
                 if (extensionsList != null) {
                     this.resultObject.put(Tokens.EXTENSIONS, extensionsList);
                 }
             }
         } catch (JSONException ex) {
             logger.error(ex);
-            JSONObject error = generateErrorObjectJsonFail(ex);
+            final JSONObject error = generateErrorObjectJsonFail(ex);
             throw new WebApplicationException(Response.status(Status.INTERNAL_SERVER_ERROR).entity(error).build());
         }
 
@@ -108,7 +119,7 @@ public class GraphResource extends AbstractSubResource {
     }
 
     @HEAD
-    @Path("{extension: (?!vertices)(?!edges)(?!indices)(?!prefixes).+}")
+    @Path("{extension: (?!vertices)(?!edges)(?!indices)(?!keyindices)(?!prefixes).+}")
     @Consumes(MediaType.APPLICATION_JSON)
     public Response headGraphExtension(@PathParam("graphname") String graphName, JSONObject json) {
         this.setRequestObject(json);
@@ -116,13 +127,13 @@ public class GraphResource extends AbstractSubResource {
     }
 
     @HEAD
-    @Path("{extension: (?!vertices)(?!edges)(?!indices)(?!prefixes).+}")
+    @Path("{extension: (?!vertices)(?!edges)(?!indices)(?!keyindices)(?!prefixes).+}")
     public Response headGraphExtension(@PathParam("graphname") String graphName) {
         return this.executeGraphExtension(graphName, HttpMethod.HEAD);
     }
 
     @PUT
-    @Path("{extension: (?!vertices)(?!edges)(?!indices)(?!prefixes).+}")
+    @Path("{extension: (?!vertices)(?!edges)(?!indices)(?!keyindices)(?!prefixes).+}")
     @Consumes(MediaType.APPLICATION_JSON)
     public Response putGraphExtension(@PathParam("graphname") String graphName, JSONObject json) {
         this.setRequestObject(json);
@@ -130,13 +141,13 @@ public class GraphResource extends AbstractSubResource {
     }
 
     @PUT
-    @Path("{extension: (?!vertices)(?!edges)(?!indices)(?!prefixes).+}")
+    @Path("{extension: (?!vertices)(?!edges)(?!indices)(?!keyindices)(?!prefixes).+}")
     public Response putGraphExtension(@PathParam("graphname") String graphName) {
         return this.executeGraphExtension(graphName, HttpMethod.PUT);
     }
 
     @OPTIONS
-    @Path("{extension: (?!vertices)(?!edges)(?!indices)(?!prefixes).+}")
+    @Path("{extension: (?!vertices)(?!edges)(?!indices)(?!keyindices)(?!prefixes).+}")
     @Consumes(MediaType.APPLICATION_JSON)
     public Response optionsGraphExtension(@PathParam("graphname") String graphName, JSONObject json) {
         this.setRequestObject(json);
@@ -144,13 +155,13 @@ public class GraphResource extends AbstractSubResource {
     }
 
     @OPTIONS
-    @Path("{extension: (?!vertices)(?!edges)(?!indices)(?!prefixes).+}")
+    @Path("{extension: (?!vertices)(?!edges)(?!indices)(?!keyindices)(?!prefixes).+}")
     public Response optionsGraphExtension(@PathParam("graphname") String graphName) {
         return this.executeGraphExtension(graphName, HttpMethod.OPTIONS);
     }
 
     @DELETE
-    @Path("{extension: (?!vertices)(?!edges)(?!indices)(?!prefixes).+}")
+    @Path("{extension: (?!vertices)(?!edges)(?!indices)(?!keyindices)(?!prefixes).+}")
     @Consumes(MediaType.APPLICATION_JSON)
     public Response deleteGraphExtension(@PathParam("graphname") String graphName, JSONObject json) {
         this.setRequestObject(json);
@@ -158,13 +169,13 @@ public class GraphResource extends AbstractSubResource {
     }
 
     @DELETE
-    @Path("{extension: (?!vertices)(?!edges)(?!indices)(?!prefixes).+}")
+    @Path("{extension: (?!vertices)(?!edges)(?!indices)(?!keyindices)(?!prefixes).+}")
     public Response deleteGraphExtension(@PathParam("graphname") String graphName) {
         return this.executeGraphExtension(graphName, HttpMethod.DELETE);
     }
 
     @POST
-    @Path("{extension: (?!vertices)(?!edges)(?!indices)(?!prefixes).+}")
+    @Path("{extension: (?!vertices)(?!edges)(?!indices)(?!keyindices)(?!prefixes).+}")
     @Consumes(MediaType.APPLICATION_JSON)
     public Response postGraphExtension(@PathParam("graphname") String graphName, JSONObject json) {
         this.setRequestObject(json);
@@ -172,25 +183,25 @@ public class GraphResource extends AbstractSubResource {
     }
 
     @POST
-    @Path("{extension: (?!vertices)(?!edges)(?!indices)(?!prefixes).+}")
+    @Path("{extension: (?!vertices)(?!edges)(?!indices)(?!keyindices)(?!prefixes).+}")
     public Response postGraphExtension(@PathParam("graphname") String graphName) {
         return this.executeGraphExtension(graphName, HttpMethod.POST);
     }
 
     @GET
-    @Path("{extension: (?!vertices)(?!edges)(?!indices)(?!prefixes).+}")
+    @Path("{extension: (?!vertices)(?!edges)(?!indices)(?!keyindices)(?!prefixes).+}")
     public Response getGraphExtension(@PathParam("graphname") String graphName) {
         return this.executeGraphExtension(graphName, HttpMethod.GET);
     }
 
-    private Response executeGraphExtension(String graphName, HttpMethod httpMethodRequested) {
+    private Response executeGraphExtension(final String graphName, final HttpMethod httpMethodRequested) {
 
         ExtensionResponse extResponse;
         ExtensionMethod methodToCall;
-        ExtensionSegmentSet extensionSegmentSet = parseUriForExtensionSegment(graphName, ExtensionPoint.GRAPH);
+        final ExtensionSegmentSet extensionSegmentSet = parseUriForExtensionSegment(graphName, ExtensionPoint.GRAPH);
 
         // determine if the namespace and extension are enabled for this graph
-        RexsterApplicationGraph rag = this.getRexsterApplicationGraph(graphName);
+        final RexsterApplicationGraph rag = this.getRexsterApplicationGraph(graphName);
 
         if (rag.isExtensionAllowed(extensionSegmentSet)) {
 
@@ -231,7 +242,7 @@ public class GraphResource extends AbstractSubResource {
                 }
 
                 // found the method...time to do work
-                returnValue = invokeExtension(graphName, methodToCall);
+                returnValue = invokeExtension(rag, methodToCall);
 
             } catch (WebApplicationException wae) {
                 // already logged this...just throw it  up.
@@ -279,36 +290,5 @@ public class GraphResource extends AbstractSubResource {
         }
 
         return Response.fromResponse(extResponse.getJerseyResponse()).type(mediaType).build();
-    }
-
-    /**
-     * DELETE http://host/graph
-     * graph.clear()
-     *
-     * @return Query time
-     */
-    @DELETE
-    @Produces({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON, RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
-    public Response deleteGraph(@PathParam("graphname") String graphName) {
-        Graph graph = this.getRexsterApplicationGraph(graphName).getGraph();
-
-        try {
-            graph.clear();
-        } catch (Exception ex) {
-            logger.error(ex);
-            JSONObject error = generateErrorObject(ex.getMessage());
-            throw new WebApplicationException(Response.status(Status.INTERNAL_SERVER_ERROR).entity(error).build());
-        }
-
-        try {
-            this.resultObject.put(Tokens.QUERY_TIME, sh.stopWatch());
-        } catch (JSONException ex) {
-            logger.error(ex);
-            JSONObject error = generateErrorObjectJsonFail(ex);
-            throw new WebApplicationException(Response.status(Status.INTERNAL_SERVER_ERROR).entity(error).build());
-        }
-
-        return Response.ok(this.resultObject).build();
-
     }
 }

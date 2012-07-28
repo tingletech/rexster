@@ -1,9 +1,9 @@
 package com.tinkerpop.rexster.config;
 
-import com.tinkerpop.blueprints.pgm.Graph;
-import com.tinkerpop.blueprints.pgm.IndexableGraph;
-import com.tinkerpop.blueprints.pgm.util.wrappers.readonly.ReadOnlyGraph;
-import com.tinkerpop.blueprints.pgm.util.wrappers.readonly.ReadOnlyIndexableGraph;
+import com.tinkerpop.blueprints.Graph;
+import com.tinkerpop.blueprints.IndexableGraph;
+import com.tinkerpop.blueprints.util.wrappers.readonly.ReadOnlyGraph;
+import com.tinkerpop.blueprints.util.wrappers.readonly.ReadOnlyIndexableGraph;
 import com.tinkerpop.rexster.RexsterApplicationGraph;
 import com.tinkerpop.rexster.Tokens;
 import org.apache.commons.configuration.HierarchicalConfiguration;
@@ -19,21 +19,21 @@ public class GraphConfigurationContainer {
 
     protected static final Logger logger = Logger.getLogger(GraphConfigurationContainer.class);
 
-    private Map<String, RexsterApplicationGraph> graphs = new HashMap<String, RexsterApplicationGraph>();
+    private final Map<String, RexsterApplicationGraph> graphs = new HashMap<String, RexsterApplicationGraph>();
 
-    private List<HierarchicalConfiguration> failedConfigurations = new ArrayList<HierarchicalConfiguration>();
+    private final List<HierarchicalConfiguration> failedConfigurations = new ArrayList<HierarchicalConfiguration>();
 
-    public GraphConfigurationContainer(List<HierarchicalConfiguration> configurations) throws GraphConfigurationException {
+    public GraphConfigurationContainer(final List<HierarchicalConfiguration> configurations) throws GraphConfigurationException {
 
         if (configurations == null) {
             throw new GraphConfigurationException("No graph configurations");
         }
 
         // create one graph for each configuration for each <graph> element
-        Iterator<HierarchicalConfiguration> it = configurations.iterator();
+        final Iterator<HierarchicalConfiguration> it = configurations.iterator();
         while (it.hasNext()) {
-            HierarchicalConfiguration graphConfig = it.next();
-            String graphName = graphConfig.getString(Tokens.REXSTER_GRAPH_NAME, "");
+            final HierarchicalConfiguration graphConfig = it.next();
+            final String graphName = graphConfig.getString(Tokens.REXSTER_GRAPH_NAME, "");
 
             if (graphName.equals("")) {
                 // all graphs must have a graph name
@@ -43,22 +43,20 @@ public class GraphConfigurationContainer {
                 // check for duplicate graph configuration
                 if (!this.graphs.containsKey(graphName)) {
 
-                    boolean enabled = graphConfig.getBoolean(Tokens.REXSTER_GRAPH_ENABLED, true);
-
-                    if (enabled) {
+                    if (graphConfig.getBoolean(Tokens.REXSTER_GRAPH_ENABLED, true)) {
 
                         // one graph failing initialization will not prevent the rest in
                         // their attempt to be created
                         try {
-                            Graph graph = getGraphFromConfiguration(graphConfig);
-                            RexsterApplicationGraph rag = new RexsterApplicationGraph(graphName, graph);
+                            final Graph graph = getGraphFromConfiguration(graphConfig);
+                            final RexsterApplicationGraph rag = new RexsterApplicationGraph(graphName, graph);
 
                             // loads extensions that are allowed to be served for this graph
-                            List extensionConfigs = graphConfig.getList(Tokens.REXSTER_GRAPH_EXTENSIONS_ALLOWS_PATH);
+                            final List extensionConfigs = graphConfig.getList(Tokens.REXSTER_GRAPH_EXTENSIONS_ALLOWS_PATH);
                             rag.loadAllowableExtensions(extensionConfigs);
 
                             // loads extension configuration for this graph
-                            List<HierarchicalConfiguration> extensionConfigurations = graphConfig.configurationsAt(Tokens.REXSTER_GRAPH_EXTENSIONS_PATH);
+                            final List<HierarchicalConfiguration> extensionConfigurations = graphConfig.configurationsAt(Tokens.REXSTER_GRAPH_EXTENSIONS_PATH);
                             rag.loadExtensionsConfigurations(extensionConfigurations);
 
                             this.graphs.put(rag.getGraphName(), rag);
@@ -66,6 +64,7 @@ public class GraphConfigurationContainer {
                             logger.info("Graph " + graphName + " - " + graph + " loaded");
                         } catch (GraphConfigurationException gce) {
                             logger.warn("Could not load graph " + graphName + ". Please check the XML configuration.");
+                            logger.warn(gce.getMessage());
 
                             if (gce.getCause() != null) {
                                 logger.warn(gce.getCause().getMessage());
@@ -97,9 +96,9 @@ public class GraphConfigurationContainer {
         return this.failedConfigurations;
     }
 
-    private Graph getGraphFromConfiguration(HierarchicalConfiguration graphConfiguration) throws GraphConfigurationException {
+    private Graph getGraphFromConfiguration(final HierarchicalConfiguration graphConfiguration) throws GraphConfigurationException {
         String graphConfigurationType = graphConfiguration.getString(Tokens.REXSTER_GRAPH_TYPE);
-        boolean isReadOnly = graphConfiguration.getBoolean(Tokens.REXSTER_GRAPH_READ_ONLY, false);
+        final boolean isReadOnly = graphConfiguration.getBoolean(Tokens.REXSTER_GRAPH_READ_ONLY, false);
 
         if (graphConfigurationType.equals("neo4jgraph")) {
             graphConfigurationType = Neo4jGraphConfiguration.class.getName();
@@ -119,12 +118,10 @@ public class GraphConfigurationContainer {
             graphConfigurationType = DexGraphConfiguration.class.getName();
         }
 
-        Graph graph = null;
-        Class clazz = null;
-        GraphConfiguration graphConfigInstance = null;
+        final Graph graph;
         try {
-            clazz = Class.forName(graphConfigurationType, true, Thread.currentThread().getContextClassLoader());
-            graphConfigInstance = (GraphConfiguration) clazz.newInstance();
+            final Class clazz = Class.forName(graphConfigurationType, true, Thread.currentThread().getContextClassLoader());
+            final GraphConfiguration graphConfigInstance = (GraphConfiguration) clazz.newInstance();
             Graph readWriteGraph = graphConfigInstance.configureGraphInstance(graphConfiguration);
 
             if (isReadOnly) {
@@ -138,6 +135,8 @@ public class GraphConfigurationContainer {
                 graph = readWriteGraph;
             }
 
+        } catch (NoClassDefFoundError err) {
+            throw new GraphConfigurationException("GraphConfiguration [" + graphConfigurationType + "] could not instantiate a class [" + err.getMessage() + "].  Ensure that it is in Rexste's path.");
         } catch (Exception ex) {
             throw new GraphConfigurationException("GraphConfiguration could not be found or otherwise instantiated:." + graphConfigurationType, ex);
         }

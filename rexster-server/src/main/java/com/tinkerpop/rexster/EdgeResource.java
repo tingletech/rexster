@@ -1,10 +1,10 @@
 package com.tinkerpop.rexster;
 
-import com.tinkerpop.blueprints.pgm.Edge;
-import com.tinkerpop.blueprints.pgm.Element;
-import com.tinkerpop.blueprints.pgm.Graph;
-import com.tinkerpop.blueprints.pgm.Vertex;
-import com.tinkerpop.blueprints.pgm.util.io.graphson.GraphSONFactory;
+import com.tinkerpop.blueprints.Edge;
+import com.tinkerpop.blueprints.Element;
+import com.tinkerpop.blueprints.Graph;
+import com.tinkerpop.blueprints.Vertex;
+import com.tinkerpop.blueprints.util.io.graphson.GraphSONUtility;
 import com.tinkerpop.rexster.extension.ExtensionMethod;
 import com.tinkerpop.rexster.extension.ExtensionPoint;
 import com.tinkerpop.rexster.extension.ExtensionResponse;
@@ -42,6 +42,11 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.ServiceConfigurationError;
 
+/**
+ * Resource for edges.
+ *
+ * @author Stephen Mallette (http://stephen.genoprime.com)
+ */
 @Path("/graphs/{graphname}/edges")
 public class EdgeResource extends AbstractSubResource {
 
@@ -51,8 +56,8 @@ public class EdgeResource extends AbstractSubResource {
         super(null);
     }
 
-    public EdgeResource(UriInfo ui, HttpServletRequest req, RexsterApplicationProvider rap) {
-        super(rap);
+    public EdgeResource(UriInfo ui, HttpServletRequest req, RexsterApplication ra) {
+        super(ra);
         this.httpServletRequest = req;
         this.uriInfo = ui;
     }
@@ -79,23 +84,38 @@ public class EdgeResource extends AbstractSubResource {
         return this.getAllEdges(graphName, true);
     }
 
-    private Response getAllEdges(String graphName, boolean showTypes) {
+    private Response getAllEdges(final String graphName, final boolean showTypes) {
 
-        RexsterApplicationGraph rag = this.getRexsterApplicationGraph(graphName);
+        final RexsterApplicationGraph rag = this.getRexsterApplicationGraph(graphName);
+        final Graph graph = rag.getGraph();
 
-        JSONObject theRequestObject = this.getRequestObject();
-        Long start = RequestObjectHelper.getStartOffset(theRequestObject);
-        Long end = RequestObjectHelper.getEndOffset(theRequestObject);
-        List<String> returnKeys = RequestObjectHelper.getReturnKeys(this.getRequestObject());
+        final JSONObject theRequestObject = this.getRequestObject();
+        final Long start = RequestObjectHelper.getStartOffset(theRequestObject);
+        final Long end = RequestObjectHelper.getEndOffset(theRequestObject);
+        final List<String> returnKeys = RequestObjectHelper.getReturnKeys(this.getRequestObject());
 
+        String key = null;
+        Object value = null;
+
+        Object temp = theRequestObject.opt(Tokens.KEY);
+        if (null != temp)
+            key = temp.toString();
+
+        temp = theRequestObject.opt(Tokens.VALUE);
+        if (null != temp)
+            value = ElementHelper.getTypedPropertyValue(temp.toString());
+
+        final boolean filtered = key != null && value != null;
+        
         boolean wasInSection = false;
         long counter = 0l;
         try {
-            JSONArray edgeArray = new JSONArray();
-            for (Edge edge : rag.getGraph().getEdges()) {
+            final JSONArray edgeArray = new JSONArray();
+            final Iterable<Edge> edges = filtered ? graph.getEdges(key, value) : graph.getEdges();
+            for (Edge edge : edges) {
                 if (counter >= start && counter < end) {
                     wasInSection = true;
-                    edgeArray.put(GraphSONFactory.createJSONElement(edge, returnKeys, showTypes));
+                    edgeArray.put(GraphSONUtility.jsonFromElement(edge, returnKeys, showTypes));
                 } else if (wasInSection) {
                     break;
                 }
@@ -109,7 +129,7 @@ public class EdgeResource extends AbstractSubResource {
         } catch (JSONException ex) {
             logger.error(ex);
 
-            JSONObject error = generateErrorObjectJsonFail(ex);
+            final JSONObject error = generateErrorObjectJsonFail(ex);
             throw new WebApplicationException(Response.status(Status.INTERNAL_SERVER_ERROR).entity(error).build());
         }
 
@@ -156,7 +176,7 @@ public class EdgeResource extends AbstractSubResource {
                 JSONObject theRequestObject = this.getRequestObject();
                 List<String> returnKeys = RequestObjectHelper.getReturnKeys(theRequestObject);
 
-                this.resultObject.put(Tokens.RESULTS, GraphSONFactory.createJSONElement(edge, returnKeys, showTypes));
+                this.resultObject.put(Tokens.RESULTS, GraphSONUtility.jsonFromElement(edge, returnKeys, showTypes));
                 this.resultObject.put(Tokens.QUERY_TIME, this.sh.stopWatch());
 
                 if (showHypermedia) {
@@ -258,26 +278,26 @@ public class EdgeResource extends AbstractSubResource {
         return this.executeEdgeExtension(graphName, id, HttpMethod.GET);
     }
 
-    private Response executeEdgeExtension(String graphName, String id, HttpMethod httpMethodRequested) {
+    private Response executeEdgeExtension(final String graphName, final String id, final HttpMethod httpMethodRequested) {
 
         final Edge edge = this.getRexsterApplicationGraph(graphName).getGraph().getEdge(id);
 
         ExtensionResponse extResponse;
         ExtensionMethod methodToCall;
-        ExtensionSegmentSet extensionSegmentSet = parseUriForExtensionSegment(graphName, ExtensionPoint.EDGE);
+        final ExtensionSegmentSet extensionSegmentSet = parseUriForExtensionSegment(graphName, ExtensionPoint.EDGE);
 
         // determine if the namespace and extension are enabled for this graph
-        RexsterApplicationGraph rag = this.getRexsterApplicationGraph(graphName);
+        final RexsterApplicationGraph rag = this.getRexsterApplicationGraph(graphName);
 
         if (rag.isExtensionAllowed(extensionSegmentSet)) {
 
-            Object returnValue = null;
+            final Object returnValue;
 
             // namespace was allowed so try to run the extension
             try {
 
                 // look for the extension as loaded through serviceloader
-                List<RexsterExtension> rexsterExtensions = null;
+                final List<RexsterExtension> rexsterExtensions;
                 try {
                     rexsterExtensions = findExtensionClasses(extensionSegmentSet);
                 } catch (ServiceConfigurationError sce) {
@@ -308,7 +328,7 @@ public class EdgeResource extends AbstractSubResource {
                 }
 
                 // found the method...time to do work
-                returnValue = invokeExtension(graphName, methodToCall, edge);
+                returnValue = invokeExtension(rag, methodToCall, edge);
 
             } catch (WebApplicationException wae) {
                 // already logged this...just throw it  up.
@@ -474,7 +494,6 @@ public class EdgeResource extends AbstractSubResource {
         if (null != temp)
             label = temp.toString();
 
-        rag.tryStartTransaction();
         try {
             // blueprints throws IllegalArgumentException if the id is null
             Edge edge = id == null ? null : graph.getEdge(id);
@@ -487,7 +506,7 @@ public class EdgeResource extends AbstractSubResource {
                     // in/out vertexes are found so edge can be created
                     edge = graph.addEdge(id, out, in, label);
                 } else {
-                    JSONObject error = generateErrorObjectJsonFail(new Exception("One or both of the vertices for the edge does not exist in the graph."));
+                    final JSONObject error = generateErrorObjectJsonFail(new Exception("One or both of the vertices for the edge does not exist in the graph."));
                     throw new WebApplicationException(Response.status(Status.CONFLICT).entity(error).build());
                 }
 
@@ -495,33 +514,38 @@ public class EdgeResource extends AbstractSubResource {
                 if (!RequestObjectHelper.hasElementProperties(theRequestObject)) {
                     // if the edge exists there better be some properties to assign
                     // this really isn't a BAD_REQUEST, but CONFLICT isn't much better...bah
-                    JSONObject error = generateErrorObjectJsonFail(new Exception("Edge with id " + id + " already exists"));
+                    final JSONObject error = generateErrorObjectJsonFail(new Exception("Edge with id " + id + " already exists"));
                     throw new WebApplicationException(Response.status(Status.CONFLICT).entity(error).build());
                 }
             }
 
             try {
                 if (edge != null) {
-                    Iterator keys = theRequestObject.keys();
+                    final Iterator keys = theRequestObject.keys();
                     while (keys.hasNext()) {
-                        String key = keys.next().toString();
+                        final String key = keys.next().toString();
                         if (!key.startsWith(Tokens.UNDERSCORE)) {
                             edge.setProperty(key, ElementHelper.getTypedPropertyValue(theRequestObject.get(key), parseTypes));
                         }
                     }
 
-                    List<String> returnKeys = RequestObjectHelper.getReturnKeys(theRequestObject);
-                    this.resultObject.put(Tokens.RESULTS, GraphSONFactory.createJSONElement(edge, returnKeys, showTypes));
+                    rag.tryStopTransactionSuccess();
+
+                    // some graph implementations close scope at the close of the transaction so this has to be
+                    // reconstituted
+                    final Edge reconstitutedElement = graph.getEdge(edge.getId());
+
+                    final List<String> returnKeys = RequestObjectHelper.getReturnKeys(theRequestObject);
+                    this.resultObject.put(Tokens.RESULTS, GraphSONUtility.jsonFromElement(reconstitutedElement, returnKeys, showTypes));
+
                 } else {
                     // edge could not be found.  likely an error condition on the request
-                    JSONObject error = generateErrorObjectJsonFail(new Exception("Edge cannot be found or created.  Please check the format of the request."));
+                    final JSONObject error = generateErrorObjectJsonFail(new Exception("Edge cannot be found or created.  Please check the format of the request."));
                     throw new WebApplicationException(Response.status(Status.INTERNAL_SERVER_ERROR).entity(error).build());
                 }
 
-                rag.tryStopTransactionSuccess();
-
                 if (showHypermedia) {
-                    JSONArray extensionsList = rag.getExtensionHypermedia(ExtensionPoint.EDGE, this.getUriPath());
+                    final JSONArray extensionsList = rag.getExtensionHypermedia(ExtensionPoint.EDGE, this.getUriPath());
                     if (extensionsList != null) {
                         this.resultObject.put(Tokens.EXTENSIONS, extensionsList);
                     }
@@ -531,7 +555,7 @@ public class EdgeResource extends AbstractSubResource {
             } catch (JSONException ex) {
                 logger.error(ex);
 
-                JSONObject error = generateErrorObjectJsonFail(ex);
+                final JSONObject error = generateErrorObjectJsonFail(ex);
                 throw new WebApplicationException(Response.status(Status.INTERNAL_SERVER_ERROR).entity(error).build());
             }
 
@@ -605,7 +629,6 @@ public class EdgeResource extends AbstractSubResource {
         final boolean showHypermedia = produces.equals(RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON_TYPE)
                 || produces.equals(RexsterMediaType.APPLICATION_REXSTER_JSON_TYPE);
 
-        rag.tryStartTransaction();
         try {
             final Edge edge = graph.getEdge(id);
             if (edge == null) {
@@ -616,27 +639,31 @@ public class EdgeResource extends AbstractSubResource {
             }
 
             // remove all properties as this is a replace operation
-            com.tinkerpop.blueprints.pgm.util.ElementHelper.removeProperties(new ArrayList<Element>() {{
+            com.tinkerpop.blueprints.util.ElementHelper.removeProperties(new ArrayList<Element>() {{
                 add(edge);
             }});
 
-            JSONObject theRequestObject = this.getRequestObject();
-            List<String> returnKeys = RequestObjectHelper.getReturnKeys(theRequestObject);
+            final JSONObject theRequestObject = this.getRequestObject();
+            final List<String> returnKeys = RequestObjectHelper.getReturnKeys(theRequestObject);
 
-            Iterator keys = theRequestObject.keys();
+            final Iterator keys = theRequestObject.keys();
             while (keys.hasNext()) {
-                String key = keys.next().toString();
+                final String key = keys.next().toString();
                 if (!key.startsWith(Tokens.UNDERSCORE)) {
                     edge.setProperty(key, ElementHelper.getTypedPropertyValue(theRequestObject.get(key), parseTypes));
                 }
             }
 
-            this.resultObject.put(Tokens.RESULTS, GraphSONFactory.createJSONElement(edge, returnKeys, showTypes));
-
             rag.tryStopTransactionSuccess();
 
+            // some graph implementations close scope at the close of the transaction so this has to be
+            // reconstituted
+            final Edge reconstitutedElement = graph.getEdge(edge.getId());
+
+            this.resultObject.put(Tokens.RESULTS, GraphSONUtility.jsonFromElement(reconstitutedElement, returnKeys, showTypes));
+
             if (showHypermedia) {
-                JSONArray extensionsList = rag.getExtensionHypermedia(ExtensionPoint.EDGE, this.getUriPath());
+                final JSONArray extensionsList = rag.getExtensionHypermedia(ExtensionPoint.EDGE, this.getUriPath());
                 if (extensionsList != null) {
                     this.resultObject.put(Tokens.EXTENSIONS, extensionsList);
                 }
@@ -652,7 +679,7 @@ public class EdgeResource extends AbstractSubResource {
 
             logger.error(ex);
 
-            JSONObject error = generateErrorObject(ex.getMessage(), ex);
+            final JSONObject error = generateErrorObject(ex.getMessage(), ex);
             throw new WebApplicationException(Response.status(Status.INTERNAL_SERVER_ERROR).entity(error).build());
         }
 
@@ -677,7 +704,6 @@ public class EdgeResource extends AbstractSubResource {
         final Graph graph = rag.getGraph();
 
         try {
-            rag.tryStartTransaction();
             final List<String> keys = this.getNonRexsterRequestKeys();
             final Edge edge = graph.getEdge(id);
             if (null != edge) {
@@ -691,9 +717,9 @@ public class EdgeResource extends AbstractSubResource {
                     graph.removeEdge(edge);
                 }
             } else {
-                String msg = "Edge with id [" + id + "] cannot be found.";
+                final String msg = "Edge with id [" + id + "] cannot be found.";
                 logger.info(msg);
-                JSONObject error = generateErrorObject(msg);
+                final JSONObject error = generateErrorObject(msg);
                 throw new WebApplicationException(Response.status(Status.NOT_FOUND).entity(error).build());
             }
 
@@ -705,14 +731,14 @@ public class EdgeResource extends AbstractSubResource {
 
             rag.tryStopTransactionFailure();
 
-            JSONObject error = generateErrorObjectJsonFail(ex);
+            final JSONObject error = generateErrorObjectJsonFail(ex);
             throw new WebApplicationException(Response.status(Status.INTERNAL_SERVER_ERROR).entity(error).build());
         } catch (WebApplicationException wae) {
             rag.tryStopTransactionFailure();
             throw wae;
         } catch (Exception ex) {
             rag.tryStopTransactionFailure();
-            JSONObject error = generateErrorObject("Transaction failed on DELETE of edge.", ex);
+            final JSONObject error = generateErrorObject("Transaction failed on DELETE of edge.", ex);
             throw new WebApplicationException(Response.status(Status.INTERNAL_SERVER_ERROR).entity(error).build());
         }
 

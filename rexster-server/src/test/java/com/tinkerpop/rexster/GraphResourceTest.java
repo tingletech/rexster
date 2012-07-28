@@ -1,6 +1,7 @@
 package com.tinkerpop.rexster;
 
-import com.tinkerpop.blueprints.pgm.Graph;
+import com.tinkerpop.blueprints.Graph;
+import com.tinkerpop.blueprints.impls.tg.TinkerGraph;
 import org.codehaus.jettison.json.JSONObject;
 import org.jmock.Expectations;
 import org.jmock.Mockery;
@@ -44,41 +45,10 @@ public class GraphResourceTest {
         Assert.assertTrue(json.has(Tokens.QUERY_TIME));
         Assert.assertTrue(json.has(Tokens.UP_TIME));
         Assert.assertTrue(json.has(Tokens.READ_ONLY));
-        Assert.assertTrue(json.has("version"));
-        Assert.assertTrue(json.has("type"));
+        Assert.assertTrue(json.has(Tokens.VERSION));
+        Assert.assertTrue(json.has(Tokens.TYPE));
+        Assert.assertTrue(json.has(Tokens.FEATURES));
 
-    }
-
-    @Test
-    public void deleteGraphValid() {
-        final Graph graph = this.mockery.mock(Graph.class);
-        final RexsterApplicationGraph rag = new RexsterApplicationGraph("graph", graph);
-
-        final UriInfo uri = this.mockery.mock(UriInfo.class);
-
-        final RexsterApplicationProvider rap = this.mockery.mock(RexsterApplicationProvider.class);
-        final HttpServletRequest httpServletRequest = this.mockery.mock(HttpServletRequest.class);
-
-        this.mockery.checking(new Expectations() {{
-            allowing(httpServletRequest).getParameterMap();
-            will(returnValue(new HashMap<String, String>()));
-            allowing(rap).getApplicationGraph(with(any(String.class)));
-            will(returnValue(rag));
-            allowing(graph).clear();
-            allowing(uri).getAbsolutePath();
-            will(returnValue(requestUriPath));
-        }});
-
-        GraphResource resource = new GraphResource(uri, httpServletRequest, rap);
-        Response response = resource.deleteGraph("graph");
-
-        Assert.assertNotNull(response);
-        Assert.assertEquals(Status.OK.getStatusCode(), response.getStatus());
-        Assert.assertNotNull(response.getEntity());
-        Assert.assertTrue(response.getEntity() instanceof JSONObject);
-
-        JSONObject json = (JSONObject) response.getEntity();
-        Assert.assertTrue(json.has(Tokens.QUERY_TIME));
     }
 
     private GraphResource constructMockGetGraphScenario(final HashMap<String, String> parameters) {
@@ -91,21 +61,23 @@ public class GraphResourceTest {
 
         final UriInfo uri = this.mockery.mock(UriInfo.class);
 
-        final RexsterApplicationProvider rap = this.mockery.mock(RexsterApplicationProvider.class);
+        final RexsterApplication ra = this.mockery.mock(RexsterApplication.class);
         final HttpServletRequest httpServletRequest = this.mockery.mock(HttpServletRequest.class);
 
         this.mockery.checking(new Expectations() {{
             allowing(httpServletRequest).getParameterMap();
             will(returnValue(parameters));
-            allowing(rap).getApplicationGraph(with(any(String.class)));
+            allowing(ra).getApplicationGraph(with(any(String.class)));
             will(returnValue(rag));
-            allowing(rap).getStartTime();
+            allowing(ra).getStartTime();
             will(returnValue(System.currentTimeMillis() - 10000));
             allowing(uri).getAbsolutePath();
             will(returnValue(requestUriPath));
+            allowing(graph).getFeatures();
+            will(returnValue(new TinkerGraph().getFeatures()));
         }});
 
-        GraphResource resource = new GraphResource(uri, httpServletRequest, rap);
+        GraphResource resource = new GraphResource(uri, httpServletRequest, ra);
         return resource;
     }
 }

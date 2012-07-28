@@ -1,10 +1,10 @@
 package com.tinkerpop.rexster.config;
 
-import com.tinkerpop.blueprints.pgm.Graph;
-import com.tinkerpop.blueprints.pgm.impls.sail.SailGraph;
-import com.tinkerpop.blueprints.pgm.impls.sail.impls.MemoryStoreSailGraph;
-import com.tinkerpop.blueprints.pgm.impls.sail.impls.NativeStoreSailGraph;
-import com.tinkerpop.blueprints.pgm.impls.sail.impls.SparqlRepositorySailGraph;
+import com.tinkerpop.blueprints.Graph;
+import com.tinkerpop.blueprints.impls.sail.SailGraph;
+import com.tinkerpop.blueprints.impls.sail.impls.MemoryStoreSailGraph;
+import com.tinkerpop.blueprints.impls.sail.impls.NativeStoreSailGraph;
+import com.tinkerpop.blueprints.impls.sail.impls.SparqlRepositorySailGraph;
 import com.tinkerpop.rexster.Tokens;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.HierarchicalConfiguration;
@@ -20,11 +20,11 @@ public abstract class AbstractSailGraphConfiguration implements GraphConfigurati
 
     protected String sailType;
 
-    public Graph configureGraphInstance(Configuration properties) throws GraphConfigurationException {
-        String graphFile = properties.getString(Tokens.REXSTER_GRAPH_LOCATION, null);
+    public Graph configureGraphInstance(final Configuration properties) throws GraphConfigurationException {
+        final String graphFile = properties.getString(Tokens.REXSTER_GRAPH_LOCATION, null);
 
         // get the <properties> section of the xml configuration
-        HierarchicalConfiguration graphSectionConfig = (HierarchicalConfiguration) properties;
+        final HierarchicalConfiguration graphSectionConfig = (HierarchicalConfiguration) properties;
         SubnodeConfiguration sailSpecificConfiguration = null;
 
         try {

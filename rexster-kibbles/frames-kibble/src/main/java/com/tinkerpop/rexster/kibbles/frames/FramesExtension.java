@@ -1,11 +1,11 @@
 package com.tinkerpop.rexster.kibbles.frames;
 
-import com.tinkerpop.blueprints.pgm.Edge;
-import com.tinkerpop.blueprints.pgm.Element;
-import com.tinkerpop.blueprints.pgm.Graph;
-import com.tinkerpop.blueprints.pgm.Vertex;
-import com.tinkerpop.frames.Direction;
-import com.tinkerpop.frames.FramesManager;
+import com.tinkerpop.blueprints.Direction;
+import com.tinkerpop.blueprints.Edge;
+import com.tinkerpop.blueprints.Element;
+import com.tinkerpop.blueprints.Graph;
+import com.tinkerpop.blueprints.Vertex;
+import com.tinkerpop.frames.FramedGraph;
 import com.tinkerpop.frames.Property;
 import com.tinkerpop.rexster.RexsterResourceContext;
 import com.tinkerpop.rexster.extension.AbstractRexsterExtension;
@@ -43,25 +43,27 @@ public class FramesExtension extends AbstractRexsterExtension {
     public static final String EXTENSION_NAME = "frames";
     public static final String EXTENSION_NAMESPACE = "tp";
 
-    public static final String TOKEN_STANDARD = "standard";
-    public static final String TOKEN_INVERSE = "inverse";
+    public static final String TOKEN_BOTH = "both";
+    public static final String TOKEN_IN = "in";
+    public static final String TOKEN_OUT = "out";
 
     @ExtensionDefinition(extensionPoint = ExtensionPoint.EDGE)
     @ExtensionDescriptor(description = "Frames extension for an edge.")
     public ExtensionResponse doFramesWorkOnEdge(@RexsterContext RexsterResourceContext rexsterResourceContext,
                                                 @RexsterContext Graph graph,
                                                 @RexsterContext Edge edge,
-                                                @ExtensionRequestParameter(name = "direction", description = "the direction of the edge (must be \"" + TOKEN_STANDARD + "\" or \"" + TOKEN_INVERSE + "\" with the default being \"" + TOKEN_STANDARD + "\"") String directionString) {
-        Direction direction = Direction.STANDARD;
+
+                                                @ExtensionRequestParameter(name = "direction", description = "the direction of the edge (must be \"" + TOKEN_BOTH + "\", \"" + TOKEN_IN + "\", or \"" + TOKEN_OUT + "\" with the default being \"" + TOKEN_BOTH + "\"") String directionString) {
+        Direction direction = Direction.BOTH;
         if (directionString != null && !directionString.isEmpty()) {
-            if (directionString.equals(TOKEN_STANDARD)) {
-                direction = Direction.STANDARD;
-            } else if (directionString.equals(TOKEN_INVERSE)) {
-                direction = Direction.INVERSE;
+            if (directionString.equals(TOKEN_IN)) {
+                direction = Direction.IN;
+            } else if (directionString.equals(TOKEN_OUT)) {
+                direction = Direction.OUT;
             } else {
                 ExtensionMethod extMethod = rexsterResourceContext.getExtensionMethod();
                 return ExtensionResponse.error(
-                        "the direction parameter must be (must be \"" + TOKEN_STANDARD + "\" or \"" + TOKEN_INVERSE + "\"",
+                        "the direction parameter must be \"" + TOKEN_BOTH + "\", \"" + TOKEN_IN + "\", or \"" + TOKEN_OUT + "\"",
                         null,
                         Response.Status.BAD_REQUEST.getStatusCode(),
                         null,
@@ -97,7 +99,7 @@ public class FramesExtension extends AbstractRexsterExtension {
         }
 
         ExtensionResponse extensionResponse;
-        FramesManager manager = new FramesManager(graph);
+        FramedGraph framedGraph = new FramedGraph(graph);
 
         ExtensionConfiguration extensionConfig = rexsterResourceContext.getRexsterApplicationGraph()
                 .findExtensionConfiguration(EXTENSION_NAMESPACE, EXTENSION_NAME);
@@ -128,9 +130,9 @@ public class FramesExtension extends AbstractRexsterExtension {
                 Object obj = null;
 
                 if (element instanceof Vertex) {
-                    obj = manager.frame((Vertex) element, clazz);
+                    obj = framedGraph.frame((Vertex) element, clazz);
                 } else if (element instanceof Edge) {
-                    obj = manager.frame((Edge) element, Direction.STANDARD, clazz);
+                    obj = framedGraph.frame((Edge) element, Direction.BOTH, clazz);
                 }
 
                 Map map = new HashMap();

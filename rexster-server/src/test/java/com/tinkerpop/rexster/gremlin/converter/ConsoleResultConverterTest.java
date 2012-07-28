@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 public class ConsoleResultConverterTest {
+    private static final String LINE_SEPARATOR = System.getProperty("line.separator");
 
     private Writer writer;
     private ConsoleResultConverter converter;
@@ -24,14 +25,12 @@ public class ConsoleResultConverterTest {
     }
 
     @Test
-    public void convertNullResultReturnsEmptyList() throws Exception {
+    public void convertNullResultReturnsZeroSizeList() throws Exception {
 
         List<String> converted = this.converter.convert(null);
 
         Assert.assertNotNull(converted);
-        Assert.assertEquals(1, converted.size());
-
-        Assert.assertEquals("", converted.get(0));
+        Assert.assertEquals(0, converted.size());
     }
 
     @Test
@@ -126,7 +125,7 @@ public class ConsoleResultConverterTest {
 
     @Test
     public void convertWriter() throws Exception {
-        this.writer.write("x\n");
+        this.writer.write("x" + LINE_SEPARATOR);
         this.writer.write("y");
 
         List<String> converted = this.converter.convert(null);

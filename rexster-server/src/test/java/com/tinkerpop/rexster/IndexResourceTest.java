@@ -1,9 +1,8 @@
 package com.tinkerpop.rexster;
 
-import com.tinkerpop.blueprints.pgm.Graph;
-import com.tinkerpop.blueprints.pgm.Index;
-import com.tinkerpop.blueprints.pgm.Index.Type;
-import com.tinkerpop.blueprints.pgm.IndexableGraph;
+import com.tinkerpop.blueprints.Graph;
+import com.tinkerpop.blueprints.Index;
+import com.tinkerpop.blueprints.IndexableGraph;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONObject;
 import org.jmock.Expectations;
@@ -34,7 +33,7 @@ public class IndexResourceTest {
     public void getAllIndicesNonIndexableGraph() {
         final Graph graph = this.mockery.mock(Graph.class);
         final RexsterApplicationGraph rag = new RexsterApplicationGraph("graph", graph);
-        final RexsterApplicationProvider rap = this.mockery.mock(RexsterApplicationProvider.class);
+        final RexsterApplication ra = this.mockery.mock(RexsterApplication.class);
 
         final UriInfo uri = this.mockery.mock(UriInfo.class);
 
@@ -43,11 +42,11 @@ public class IndexResourceTest {
         this.mockery.checking(new Expectations() {{
             allowing(httpServletRequest).getParameterMap();
             will(returnValue(new HashMap<String, String>()));
-            allowing(rap).getApplicationGraph(with(any(String.class)));
+            allowing(ra).getApplicationGraph(with(any(String.class)));
             will(returnValue(rag));
         }});
 
-        IndexResource resource = new IndexResource(uri, httpServletRequest, rap);
+        IndexResource resource = new IndexResource(uri, httpServletRequest, ra);
         resource.getAllIndices("graph");
     }
 
@@ -146,26 +145,26 @@ public class IndexResourceTest {
     private IndexResource constructMockGetAllIndicesScenario(int numberOfIndicesToGenerate, final HashMap<String, String> parameters) {
         final IndexableGraph graph = this.mockery.mock(IndexableGraph.class);
         final RexsterApplicationGraph rag = new RexsterApplicationGraph("graph", graph);
-        final RexsterApplicationProvider rap = this.mockery.mock(RexsterApplicationProvider.class);
+        final RexsterApplication ra = this.mockery.mock(RexsterApplication.class);
 
         final UriInfo uri = this.mockery.mock(UriInfo.class);
         final HttpServletRequest httpServletRequest = this.mockery.mock(HttpServletRequest.class);
         final ArrayList<Index> indices = new ArrayList<Index>();
 
         for (int ix = 0; ix < numberOfIndicesToGenerate; ix++) {
-            indices.add(new MockIndex("index-name-" + new Integer(ix).toString(), Type.MANUAL, String.class, 100l));
+            indices.add(new MockIndex("index-name-" + new Integer(ix).toString(), String.class, 100l));
         }
 
         this.mockery.checking(new Expectations() {{
             allowing(httpServletRequest).getParameterMap();
             will(returnValue(parameters));
-            allowing(rap).getApplicationGraph(with(any(String.class)));
+            allowing(ra).getApplicationGraph(with(any(String.class)));
             will(returnValue(rag));
             allowing(graph).getIndices();
             will(returnValue(indices));
         }});
 
-        IndexResource resource = new IndexResource(uri, httpServletRequest, rap);
+        IndexResource resource = new IndexResource(uri, httpServletRequest, ra);
         return resource;
     }
 

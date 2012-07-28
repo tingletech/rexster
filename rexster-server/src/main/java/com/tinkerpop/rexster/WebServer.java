@@ -52,6 +52,7 @@ import java.util.logging.LogManager;
 
 /**
  * @author Marko A. Rodriguez (http://markorodriguez.com)
+ * @author Stephen Mallette (http://stephen.genoprime.com)
  */
 public class WebServer {
 
@@ -66,19 +67,16 @@ public class WebServer {
     }
 
     protected HttpServer rexsterServer;
-    protected HttpServer doghouseServer;
     protected TCPNIOTransport rexproServer;
 
     public WebServer(final XMLConfiguration properties, boolean user) throws Exception {
-        logger.info(".:Welcome to Rexster:.");
-
         if (user) {
             this.startUser(properties);
         } else {
             this.start(properties);
         }
 
-        // initialize teh session monitor for rexpro to clean up dead sessions.
+        // initialize the session monitor for rexpro to clean up dead sessions.
         Long rexProSessionMaxIdle = properties.getLong("rexpro-session-max-idle", new Long(1790000));
         Long rexProSessionCheckInterval = properties.getLong("rexpro-session-check-interval", new Long(3000000));
         new RexProSessionMonitor(rexProSessionMaxIdle, rexProSessionCheckInterval);
@@ -90,11 +88,8 @@ public class WebServer {
         //Register a shutdown hook
         shutdownManager.registerShutdownListener(new ShutdownManager.ShutdownListener() {
             public void shutdown() {
-                try {
-                    stop();
-                } catch (Exception ex) {
-
-                }
+                // shutdown grizzly/graphs
+                stop();
             }
         });
 
@@ -114,16 +109,17 @@ public class WebServer {
     }
 
     private void start(final XMLConfiguration properties) throws Exception {
-        RexsterApplication rexsterApplication = WebServerRexsterApplicationProvider.start(properties);
+        WebServerRexsterApplicationProvider.start(properties);
         final Integer rexsterServerPort = properties.getInteger("rexster-server-port", new Integer(8182));
         final String rexsterServerHost = properties.getString("rexster-server-host", "0.0.0.0");
         final Integer rexproServerPort = properties.getInteger("rexpro-server-port", new Integer(8184));
+        final String rexproServerHost = properties.getString("rexpro-server-host", "0.0.0.0");
         final String webRootPath = properties.getString("web-root", DEFAULT_WEB_ROOT_PATH);
         final String baseUri = properties.getString("base-uri", DEFAULT_BASE_URI);
         characterEncoding = properties.getString("character-set", "ISO-8859-1");
 
         this.startRexsterServer(properties, baseUri, rexsterServerPort, rexsterServerHost, webRootPath);
-        this.startRexProServer(properties, rexproServerPort, rexsterApplication);
+        this.startRexProServer(properties, rexproServerPort, rexproServerHost);
 
     }
 
@@ -151,6 +147,9 @@ public class WebServer {
         jerseyHandler.setContextPath("/");
         jerseyHandler.setServletInstance(new ServletContainer());
 
+        WebServerRexsterApplicationProvider provider = new WebServerRexsterApplicationProvider();
+        RexsterApplication application = provider.getValue();
+
         // servlet that services all url from "main" by simply sending
         // main.html back to the calling client.  main.html handles its own
         // state given the uri
@@ -163,14 +162,14 @@ public class WebServer {
         visualizationHandler.addInitParameter("com.tinkerpop.rexster.config", properties.getString("self-xml"));
 
         visualizationHandler.setContextPath("/doghouse/visualize");
-        visualizationHandler.setServletInstance(new VisualizationServlet());
+        visualizationHandler.setServletInstance(new VisualizationServlet(application));
 
         // servlet for gremlin console
         ServletHandler evaluatorHandler = new ServletHandler();
         evaluatorHandler.addInitParameter("com.tinkerpop.rexster.config", properties.getString("self-xml"));
 
         evaluatorHandler.setContextPath("/doghouse/exec");
-        evaluatorHandler.setServletInstance(new EvaluatorServlet());
+        evaluatorHandler.setServletInstance(new EvaluatorServlet(application));
 
         String absoluteWebRootPath = (new File(webRootPath)).getAbsolutePath();
         dogHouseHandler.addInitParameter("com.tinkerpop.rexster.config.rexsterApiBaseUri", baseUri + ":" + rexsterServerPort.toString());
@@ -191,8 +190,9 @@ public class WebServer {
         logger.info("Rexster Server running on: [" + baseUri + ":" + rexsterServerPort + "]");
     }
 
-    private void startRexProServer(final XMLConfiguration properties, final Integer rexproServerPort,
-                                   final RexsterApplication rexsterApplication) throws Exception {
+    private void startRexProServer(final XMLConfiguration properties,
+                                   final Integer rexproServerPort,
+                                   final String rexproServerHost) throws Exception {
         FilterChainBuilder filterChainBuilder = FilterChainBuilder.stateless();
         filterChainBuilder.add(new TransportFilter());
         filterChainBuilder.add(new RexProMessageFilter());
@@ -216,25 +216,41 @@ public class WebServer {
             logger.info("Rexster configured with [" + filter.getName() + "].");
         }
 
-        filterChainBuilder.add(new SessionFilter(rexsterApplication));
+        WebServerRexsterApplicationProvider provider = new WebServerRexsterApplicationProvider();
+        RexsterApplication application = provider.getValue();
+
+        filterChainBuilder.add(new SessionFilter(application));
         filterChainBuilder.add(new ScriptFilter());
         filterChainBuilder.add(new EchoFilter());
 
         this.rexproServer = TCPNIOTransportBuilder.newInstance().build();
         this.rexproServer.setIOStrategy(WorkerThreadIOStrategy.getInstance());
         this.rexproServer.setProcessor(filterChainBuilder.build());
-        this.rexproServer.bind(rexproServerPort);
+        this.rexproServer.bind(rexproServerHost, rexproServerPort);
 
         this.rexproServer.start();
 
         logger.info("RexPro serving on port: [" + rexproServerPort + "]");
     }
 
-    protected void stop() throws Exception {
-        this.rexsterServer.stop();
-        this.doghouseServer.stop();
-        this.rexproServer.stop();
-        WebServerRexsterApplicationProvider.stop();
+    protected void stop() {
+        try {
+            this.rexsterServer.stop();
+        } catch (Exception ex) {
+            logger.debug("Error shutting down Rexster Server ignored.", ex);
+        }
+        
+        try {
+            this.rexproServer.stop();
+        } catch (Exception ex) {
+            logger.debug("Error shutting down RexPro Server ignored.", ex);
+        }
+        
+        try {
+            WebServerRexsterApplicationProvider.stop();
+        } catch (Exception ex) {
+            logger.warn("Error while shutting down graphs.  All graphs may not have been shutdown cleanly.");
+        }
     }
 
     @SuppressWarnings("static-access")
@@ -356,7 +372,7 @@ public class WebServer {
         return options;
     }
 
-    private static RexsterCommandLine getCliInput(final String[] args) throws Exception {
+    private static RexsterCommandLine getCliInput(final String[] args) {
         Options options = getCliOptions();
         Options innerOptions = null;
         GnuParser parser = new GnuParser();
@@ -443,11 +459,13 @@ public class WebServer {
         return cleanedArgumentsAsArray;
     }
 
-    public static void main(final String[] args) throws Exception {
+    public static void main(final String[] args)  {
 
-        XMLConfiguration properties = new XMLConfiguration();
+        logger.info(".:Welcome to Rexster:.");
 
-        RexsterCommandLine line = getCliInput(cleanArguments(args));
+        final XMLConfiguration properties = new XMLConfiguration();
+
+        final RexsterCommandLine line = getCliInput(cleanArguments(args));
 
         if (line.getCommand().hasOption("start")) {
             if (line.hasCommandParameters() && line.getCommandParameters().hasOption("debug")) {
@@ -462,23 +480,32 @@ public class WebServer {
                 }
             }
 
-            String rexsterXmlFile = "rexster.xml";
-
-            if (line.hasCommandParameters() && line.getCommandParameters().hasOption("configuration")) {
-
-                rexsterXmlFile = line.getCommandParameters().getOptionValue("configuration");
-
-                try {
-                    properties.load(new FileReader(rexsterXmlFile));
-                } catch (IOException e) {
-                    throw new Exception("Could not locate " + rexsterXmlFile + " properties file.");
-                }
-            } else {
-                // no arguments to parse...check the default rexster.xml in the root of the working directory
-                try {
-                    properties.load(new FileReader(rexsterXmlFile));
-                } catch (IOException e) {
-                    properties.load(RexsterApplication.class.getResourceAsStream(rexsterXmlFile));
+            final boolean rexsterXmlConfiguredFromCommandLine = line.hasCommandParameters() && line.getCommandParameters().hasOption("configuration");
+            final String rexsterXmlFileLocation = rexsterXmlConfiguredFromCommandLine ? line.getCommandParameters().getOptionValue("configuration") : "rexster.xml";
+            final File rexsterXmlFile = new File(rexsterXmlFileLocation);
+            
+            try {
+                // load either the rexster.xml from the command line or the default rexster.xml in the root of the
+                // working directory
+                properties.load(new FileReader(rexsterXmlFileLocation));
+                logger.info("Using [" + rexsterXmlFile.getAbsolutePath() + "] as configuration source.");
+            } catch (Exception e) {
+                logger.warn("Could not load configuration from [" + rexsterXmlFile.getAbsolutePath() + "]");
+                
+                if (rexsterXmlConfiguredFromCommandLine) {
+                    // since an explicit value for rexster.xml was supplied and could not be found then 
+                    // we won't continue to load rexster.
+                    throw new RuntimeException("Could not load configuration from [" + rexsterXmlFile.getAbsolutePath() + "]");
+                } else {
+                    // since the default value for rexster.xml was supplied and could not be found, try to 
+                    // revert to the rexster.xml stored as a resource.  a good fall back for users just 
+                    // getting started with rexster.
+                    try {
+                        properties.load(RexsterApplication.class.getResourceAsStream(rexsterXmlFileLocation));
+                        logger.info("Using [" + rexsterXmlFileLocation + "] resource as configuration source.");
+                    } catch (Exception ex){
+                        logger.fatal("None of the default rexster.xml can be found or read.");
+                    }
                 }
             }
 
@@ -488,7 +515,7 @@ public class WebServer {
             // initialization preventing it from having to be explicitly defined
             // in rexster.xml itself.  there's probably an even better way to do
             // this *sigh*
-            properties.addProperty("self-xml", rexsterXmlFile);
+            properties.addProperty("self-xml", rexsterXmlFileLocation);
 
             // overrides rexster-server-port from command line
             if (line.hasCommandParameters() && line.getCommandParameters().hasOption("rexsterport")) {
@@ -503,10 +530,12 @@ public class WebServer {
             try {
                 new WebServer(properties, true);
             } catch (BindException be) {
-                logger.error("Could not start Rexster Server.  A port that Rexster needs is in use.");
+                logger.fatal("Could not start Rexster Server.  A port that Rexster needs is in use.");
+            } catch (Exception ex) {
+                logger.fatal("The Rexster Server could not be started", ex);
             }
         } else if (line.getCommand().hasOption("version")) {
-            System.out.println("Rexster version [" + RexsterApplication.getVersion() + "]");
+            System.out.println("Rexster version [" + RexsterApplicationImpl.getVersion() + "]");
         } else if (line.getCommand().hasOption("stop")) {
             if (line.hasCommandParameters() && line.getCommandParameters().hasOption("wait")) {
                 issueControlCommand(line, ShutdownManager.COMMAND_SHUTDOWN_WAIT);
@@ -541,6 +570,7 @@ public class WebServer {
 
         if (line.hasCommandParameters() && line.getCommandParameters().hasOption("cmd")) {
             command = line.getCommandParameters().getOptionValue("cmd");
+
         }
 
         Socket shutdownConnection = null;
@@ -579,6 +609,4 @@ public class WebServer {
             }
         }
     }
-
-
 }

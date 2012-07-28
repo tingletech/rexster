@@ -5,6 +5,7 @@
     <rexster-shutdown-port>8183</rexster-shutdown-port>
     <rexster-shutdown-host>127.0.0.1</rexster-shutdown-host>
     <rexpro-server-port>8184</rexpro-server-port>
+    <rexpro-server-host>0.0.0.0</rexpro-server-host>
     <rexpro-session-max-idle>1790000</rexpro-session-max-idle>
     <rexpro-session-check-interval>3000000</rexpro-session-check-interval>
     <base-uri>http://localhost</base-uri>
@@ -89,11 +90,6 @@
                      not in use the relationship cache will not be increased above this value  -->
                 <max_relationship_cache_size>3500</max_relationship_cache_size>
             </properties>
-            <extensions>
-                <allows>
-                    <allow>tp:gremlin</allow>
-                </allows>
-            </extensions>
         </graph>
     </graphs>
 </rexster>

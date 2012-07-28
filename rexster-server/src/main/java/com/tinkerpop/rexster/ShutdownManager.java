@@ -24,6 +24,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Manages the socket listening for incoming shutdown requests.
  * <p/>
  * Adapted from http://code.google.com/p/shutdown-listener/
+ *
+ * @author Stephen Mallette (http://stephen.genoprime.com)
  */
 public class ShutdownManager {
     protected final Logger logger = Logger.getLogger(this.getClass());
@@ -43,7 +45,7 @@ public class ShutdownManager {
     private String host = "127.0.0.1";
 
     static {
-        PropertyConfigurator.configure(RexsterApplication.class.getResource("log4j.properties"));
+        PropertyConfigurator.configure(RexsterApplicationImpl.class.getResource("log4j.properties"));
     }
 
     public ShutdownManager(String host, int port) {
@@ -66,7 +68,7 @@ public class ShutdownManager {
         shutdownSocketThread.setDaemon(true);
         shutdownSocketThread.start();
 
-        //Add the listener to the shutdown list 
+        //Add the listener to the shutdown list
         this.internalShutdownListeners.add(shutdownSocketListener);
 
         //Register a shutdown handler

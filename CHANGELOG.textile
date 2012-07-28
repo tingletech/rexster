@@ -1,21 +1,50 @@
 Rexster: A Graph Server
 "http://rexster.tinkerpop.com":http://rexster.tinkerpop.com
 
-==<hr/>==
+h2. Rexster 0.y.z
 
-h3. Version 0.9 (NOT OFFICIALLY RELEASED YET)
+!https://github.com/tinkerpop/rexster/raw/master/doc/images/rexster-2.png!
+
+h3. Version 2.1.0 (NOT OFFICIALLY RELEASED YET)
 
 ```xml
 <dependency>
   <groupId>com.tinkerpop.rexster</groupId>
   <artifactId>rexster</artifactId>
-  <version>0.9-SNAPSHOT</version>
+  <version>2.1.0-SNAPSHOT</version>
 </dependency>
 ```
 
-* REST API for POSTing new indices supports @params@ argument which constructs a parameter map which will configure the newly created index.
+* Added Travis continuous integration support
+* Fixed issue with POST and DELETE of key indices via REST API.
+* Configuration element of @rexster.xml@ to bind the rexpro hostname.
+* Vertex query API. 
+* Fixed issue with inconsistencies of PUT, POST, and DELETE around manual indices.
+* Restructured project to introduce rexster-core, rexster-console and rexster-protocol.
 
 ==<hr/>==
+
+h3. Version 2.0.0 (May 23, 2012)
+
+```xml
+<dependency>
+  <groupId>com.tinkerpop.rexster</groupId>
+  <artifactId>rexster</artifactId>
+  <version>2.0.0</version>
+</dependency>
+```
+
+* REST API for POSTing new indices supports @params@ argument which constructs a parameter map which will configure the newly created index
+* The DELETE operation for the Graph resource has been removed since Blueprints no longer supports @Graph.clear()@
+* The Index resource no longer has a @keys@ sub-resource nor the notion of "automatic" or "manual" indices due to changes in the Blueprints API
+* Add metadata from graph @Features@ to the Graph resource
+* @KeyIndexResource@ to access features of @KeyIndexableGraph@ instances
+* @VertexResource@ and @EdgeResource@ support key index filtering
+* Improved messaging to the server console regarding which @rexster.xml@ file is being loaded
+
+==<hr/>==
+
+h2. Rexster 0.x
 
 !https://github.com/tinkerpop/rexster/raw/master/doc/images/rexster-santas-little-helper.png!
 
@@ -122,7 +151,7 @@ h3. Version 0.6 (Dalmatian -- September 18, 2011)
 
 * Support for High Availability mode of Neo4j
 * The @rexster-stop.sh@ command is now consistent with the @rexster-stop.sh@ in terms of parameter naming and shorthand.
-* Retrieve adjacent vertices through REST API of the vertex resource.
+* Retrieve adjacency vertices through REST API of the vertex resource.
 * Filter by multiple edge labels in the REST API of the vertex resource.
 * PUT on vertex and edge resources in the REST API replaces all graph element properties with the specified set.
 * Combine rexster-start.sh and rexster-stop.sh into rexster.sh with new @-version@ and @-status@ commands.

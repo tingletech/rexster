@@ -25,6 +25,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * Base resource from which most other resources extend.  Exposes the request/response object and other
+ * request and context information.
+ *
+ * @author Stephen Mallette (http://stephen.genoprime.com)
+ */
 public abstract class BaseResource {
 
     private static Logger logger = Logger.getLogger(BaseResource.class);
@@ -48,7 +54,8 @@ public abstract class BaseResource {
 
     protected JSONObject resultObject = new JSONObject();
 
-    private RexsterApplicationProvider rexsterApplicationProvider;
+    @Context
+    private RexsterApplication rexsterApplication;
 
     @Context
     protected HttpServletRequest httpServletRequest;
@@ -62,16 +69,12 @@ public abstract class BaseResource {
     @Context
     protected SecurityContext securityContext;
 
-    public BaseResource(RexsterApplicationProvider rexsterApplicationProvider) {
-
-        // the general assumption is that the web server is the provider for RexsterApplication
-        // instances.  this really should only change in unit test scenarios.
-        this.rexsterApplicationProvider = rexsterApplicationProvider;
-
+    public BaseResource(RexsterApplication rexsterApplication) {
+        this.rexsterApplication = rexsterApplication;
         sh.stopWatch();
 
         try {
-            this.resultObject.put(Tokens.VERSION, RexsterApplication.getVersion());
+            this.resultObject.put(Tokens.VERSION, RexsterApplicationImpl.getVersion());
         } catch (JSONException ex) {
             JSONObject error = generateErrorObject(ex.getMessage());
             throw new WebApplicationException(Response.status(Status.INTERNAL_SERVER_ERROR).entity(error).build());
@@ -99,16 +102,8 @@ public abstract class BaseResource {
         return new JSONObject(m);
     }
 
-    protected RexsterApplicationProvider getRexsterApplicationProvider() {
-        if (this.rexsterApplicationProvider == null) {
-            try {
-                this.rexsterApplicationProvider = new WebServerRexsterApplicationProvider(this.servletContext);
-            } catch (Exception ex) {
-                logger.info("The Rexster Application Provider could not be configured", ex);
-            }
-        }
-
-        return this.rexsterApplicationProvider;
+    protected RexsterApplication getRexsterApplication() {
+        return this.rexsterApplication;
     }
 
     protected String getUriPath() {
@@ -183,10 +178,10 @@ public abstract class BaseResource {
 
     private void buildRequestObject(final Map queryParameters) throws JSONException {
 
-        Map<String, Object> flatMap = new HashMap<String, Object>();
+        final Map<String, Object> flatMap = new HashMap<String, Object>();
 
         for (String key : (Set<String>) queryParameters.keySet()) {
-            String[] keys = key.split(Tokens.PERIOD_REGEX);
+            final String[] keys = key.split(Tokens.PERIOD_REGEX);
             JSONObject embeddedObject = this.requestObject;
             for (int i = 0; i < keys.length - 1; i++) {
                 JSONObject tempEmbeddedObject = (JSONObject) embeddedObject.opt(keys[i]);
@@ -198,7 +193,7 @@ public abstract class BaseResource {
             }
 
             String rawValue;
-            Object val = queryParameters.get(key);
+            final Object val = queryParameters.get(key);
             if (val instanceof String) {
                 rawValue = (String) val;
             } else {
@@ -228,6 +223,8 @@ public abstract class BaseResource {
         }
 
         this.requestObjectFlat = new JSONObject(flatMap);
+
+
     }
 
     protected JSONObject getNonRexsterRequest() throws JSONException {
@@ -269,9 +266,9 @@ public abstract class BaseResource {
             else if (key.equals(Tokens._LABEL))
                 temp = ((Edge) element).getLabel();
             else if (key.equals(Tokens._IN_V))
-                temp = ((Edge) element).getInVertex().getId();
+                temp = ((Edge) element).getVertex(Direction.IN).getId();
             else if (key.equals(Tokens._OUT_V))
-                temp = ((Edge) element).getOutVertex().getId();
+                temp = ((Edge) element).getVertex(Direction.OUT).getId();
             else if (key.equals(Tokens._TYPE)) {
                 if (element instanceof Vertex)
                     temp = Tokens.VERTEX;
@@ -287,7 +284,7 @@ public abstract class BaseResource {
     */
 
     protected String getTimeAlive() {
-        long timeMillis = System.currentTimeMillis() - this.rexsterApplicationProvider.getStartTime();
+        long timeMillis = System.currentTimeMillis() - this.rexsterApplication.getStartTime();
         long timeSeconds = timeMillis / 1000;
         long timeMinutes = timeSeconds / 60;
         long timeHours = timeMinutes / 60;

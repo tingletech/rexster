@@ -1,7 +1,7 @@
 package com.tinkerpop.rexster.util;
 
-import com.tinkerpop.blueprints.pgm.TransactionalGraph;
-import com.tinkerpop.blueprints.pgm.impls.tg.TinkerGraph;
+import com.tinkerpop.blueprints.TransactionalGraph;
+import com.tinkerpop.blueprints.impls.tg.TinkerGraph;
 
 /**
  * Mocked transactional graph for testing purposes.
@@ -12,8 +12,6 @@ import com.tinkerpop.blueprints.pgm.impls.tg.TinkerGraph;
  */
 public class MockTinkerTransactionalGraph extends TinkerGraph implements TransactionalGraph {
 
-    private int maxBufferSize = 1;
-
     public MockTinkerTransactionalGraph(final String directory) {
         super(directory);
     }
@@ -22,23 +20,7 @@ public class MockTinkerTransactionalGraph extends TinkerGraph implements Transac
         super();
     }
 
-    public void startTransaction() {
-
-    }
-
     public void stopTransaction(final Conclusion conclusion) {
 
-    }
-
-    public void setMaxBufferSize(final int maxBufferSize) {
-        this.maxBufferSize = maxBufferSize;
-    }
-
-    public int getCurrentBufferSize() {
-        return 1;
-    }
-
-    public int getMaxBufferSize() {
-        return maxBufferSize;
     }
 }

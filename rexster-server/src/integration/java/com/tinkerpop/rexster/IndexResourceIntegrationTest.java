@@ -14,40 +14,10 @@ public class IndexResourceIntegrationTest extends AbstractGraphResourceIntegrati
     @Test
     public void postIndexManualSucceed() {
         for (GraphTestHolder testGraph : this.testGraphs) {
-            ClientResponse indexResponse = doGraphPost(testGraph, "indices/newindex", "class=vertex&type=manual");
-
-            Assert.assertNotNull(indexResponse);
-            Assert.assertEquals(ClientResponse.Status.OK, indexResponse.getClientResponseStatus());
-        }
-    }
-
-    @Test
-    public void postIndexAutomaticSucceed() {
-        for (GraphTestHolder testGraph : this.testGraphs) {
-            ClientResponse indexResponse = doGraphPost(testGraph, "indices/newindex", "class=vertex&type=manual&keys=x");
-
-            Assert.assertNotNull(indexResponse);
-            Assert.assertEquals(ClientResponse.Status.OK, indexResponse.getClientResponseStatus());
-        }
-    }
-
-    @Test
-    public void postIndexBadRequestMissingType() {
-        for (GraphTestHolder testGraph : this.testGraphs) {
             ClientResponse indexResponse = doGraphPost(testGraph, "indices/newindex", "class=vertex");
 
             Assert.assertNotNull(indexResponse);
-            Assert.assertEquals(ClientResponse.Status.BAD_REQUEST, indexResponse.getClientResponseStatus());
-        }
-    }
-
-    @Test
-    public void postIndexBadRequestMissingClass() {
-        for (GraphTestHolder testGraph : this.testGraphs) {
-            ClientResponse indexResponse = doGraphPost(testGraph, "indices/newindex", "type=manual");
-
-            Assert.assertNotNull(indexResponse);
-            Assert.assertEquals(ClientResponse.Status.BAD_REQUEST, indexResponse.getClientResponseStatus());
+            Assert.assertEquals(ClientResponse.Status.OK, indexResponse.getClientResponseStatus());
         }
     }
 
@@ -64,11 +34,11 @@ public class IndexResourceIntegrationTest extends AbstractGraphResourceIntegrati
     @Test
     public void putElementInIndexValid() {
         for (GraphTestHolder testGraph : this.testGraphs) {
-            doGraphPost(testGraph, "indices/newindex", "class=vertex&type=manual&keys=name");
+            doGraphPost(testGraph, "indices/newindex", "class=vertex&keys=name");
 
             String mappedId = testGraph.getVertexIdSet().get("1");
 
-            ClientResponse indexPutResponse = doGraphPut(testGraph, "indices/newindex", "key=name&value=marko&id=" + mappedId);
+            ClientResponse indexPutResponse = doGraphPut(testGraph, "indices/newindex", "key=name&value=marko&id=" + encode(mappedId));
 
             Assert.assertNotNull(indexPutResponse);
             Assert.assertEquals(ClientResponse.Status.OK, indexPutResponse.getClientResponseStatus());
@@ -94,11 +64,11 @@ public class IndexResourceIntegrationTest extends AbstractGraphResourceIntegrati
     @Test
     public void deleteElementInIndexThenIndexItself() {
         for (GraphTestHolder testGraph : this.testGraphs) {
-            doGraphPost(testGraph, "indices/newindex", "class=vertex&type=manual&keys=name");
+            doGraphPost(testGraph, "indices/newindex", "class=vertex&keys=name");
 
             String mappedId = testGraph.getVertexIdSet().get("1");
 
-            ClientResponse indexPutResponse = doGraphPut(testGraph, "indices/newindex", "key=name&value=marko&id=" + mappedId);
+            ClientResponse indexPutResponse = doGraphPut(testGraph, "indices/newindex", "key=name&value=marko&id=" + encode(mappedId));
 
             ClientResponse indexGetResponse = doGraphGet(testGraph, "indices/newindex", "key=name&value=marko");
             Assert.assertNotNull(indexGetResponse);
@@ -115,7 +85,7 @@ public class IndexResourceIntegrationTest extends AbstractGraphResourceIntegrati
             Assert.assertEquals(mappedId, marko.optString("_id"));
             Assert.assertEquals("marko", marko.optString("name"));
 
-            doGraphDelete(testGraph, "indices/newindex", "key=name&value=marko&id=" + mappedId);
+            doGraphDelete(testGraph, "indices/newindex", "key=name&value=marko&id=" + encode(mappedId));
 
             indexGetResponse = doGraphGet(testGraph, "indices/newindex", "key=name&value=marko");
             Assert.assertNotNull(indexGetResponse);

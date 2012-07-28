@@ -7,11 +7,10 @@ package com.tinkerpop.rexster.filter;
 import com.sun.jersey.core.util.Base64;
 import com.sun.jersey.spi.container.ContainerRequest;
 import com.sun.jersey.spi.container.ContainerRequestFilter;
-import com.tinkerpop.rexster.RexsterApplication;
-import com.tinkerpop.rexster.protocol.message.ErrorResponseMessage;
-import com.tinkerpop.rexster.protocol.message.MessageType;
-import com.tinkerpop.rexster.protocol.message.RexProMessage;
-import com.tinkerpop.rexster.protocol.message.SessionRequestMessage;
+import com.tinkerpop.rexster.RexsterApplicationImpl;
+import com.tinkerpop.rexster.protocol.msg.ErrorResponseMessage;
+import com.tinkerpop.rexster.protocol.msg.RexProMessage;
+import com.tinkerpop.rexster.protocol.msg.SessionRequestMessage;
 import org.apache.commons.configuration.XMLConfiguration;
 import org.apache.log4j.Logger;
 import org.codehaus.jettison.json.JSONObject;
@@ -41,7 +40,7 @@ import java.util.Map;
  */
 public abstract class AbstractSecurityFilter extends BaseFilter implements ContainerRequestFilter {
 
-    private static Logger logger = Logger.getLogger(AbstractSecurityFilter.class);
+    private static final Logger logger = Logger.getLogger(AbstractSecurityFilter.class);
 
     @Context
     protected UriInfo uriInfo;
@@ -58,7 +57,7 @@ public abstract class AbstractSecurityFilter extends BaseFilter implements Conta
     }
 
 
-    public AbstractSecurityFilter(XMLConfiguration configuration) {
+    public AbstractSecurityFilter(final XMLConfiguration configuration) {
         configure(configuration);
         isConfigured = true;
     }
@@ -74,7 +73,7 @@ public abstract class AbstractSecurityFilter extends BaseFilter implements Conta
      * This method will be called multiple times so look to cache the configuration once after the
      * first call.
      */
-    public abstract void configure(XMLConfiguration configuration);
+    public abstract void configure(final XMLConfiguration configuration);
 
     /**
      * The name of the security filter.
@@ -87,18 +86,21 @@ public abstract class AbstractSecurityFilter extends BaseFilter implements Conta
     public NextAction handleRead(final FilterChainContext ctx) throws IOException {
         final RexProMessage message = ctx.getMessage();
 
-        if (message.getType() == MessageType.SESSION_REQUEST && !message.hasSession()) {
-            SessionRequestMessage specificMessage = new SessionRequestMessage(message);
+        if (message instanceof SessionRequestMessage && !message.hasSession()) {
+            final SessionRequestMessage specificMessage = (SessionRequestMessage) message;
 
-            if (specificMessage.getFlag() == SessionRequestMessage.FLAG_NEW_SESSION) {
-                final String[] usernamePassword = specificMessage.getUsernamePassword();
-                final String username = usernamePassword[0];
-                final String password = usernamePassword[1];
+            if (specificMessage.Flag == SessionRequestMessage.FLAG_NEW_SESSION) {
+                final String username = specificMessage.Username;
+                final String password = specificMessage.Password;
                 if (!authenticate(username, password)) {
                     // there is no session to this message...that's a problem
-                    ctx.write(new ErrorResponseMessage(RexProMessage.EMPTY_SESSION, message.getRequestAsUUID(),
-                            ErrorResponseMessage.FLAG_ERROR_AUTHENTICATION_FAILURE,
-                            "Invalid username or password."));
+                    final ErrorResponseMessage errorMessage = new ErrorResponseMessage();
+                    errorMessage.setSessionAsUUID(RexProMessage.EMPTY_SESSION);
+                    errorMessage.Request = specificMessage.Request;
+                    errorMessage.ErrorMessage = "Invalid username or password.";
+                    errorMessage.Flag = ErrorResponseMessage.FLAG_ERROR_AUTHENTICATION_FAILURE;
+
+                    ctx.write(errorMessage);
 
                     return ctx.getStopAction();
                 }
@@ -111,8 +113,8 @@ public abstract class AbstractSecurityFilter extends BaseFilter implements Conta
     /**
      * REST/Dog House based authentication.
      */
-    public ContainerRequest filter(ContainerRequest request) {
-        User user = authenticateServletRequest(request);
+    public ContainerRequest filter(final ContainerRequest request) {
+        final User user = authenticateServletRequest(request);
         request.setSecurityContext(new Authorizer(user));
         return request;
     }
@@ -141,7 +143,7 @@ public abstract class AbstractSecurityFilter extends BaseFilter implements Conta
         this.initFromServletConfiguration();
 
         // get the authorization header value
-        String authentication = request.getHeaderValue(ContainerRequest.AUTHORIZATION);
+        final String authentication = request.getHeaderValue(ContainerRequest.AUTHORIZATION);
         if (authentication == null) {
             throw new WebApplicationException(generateErrorResponse("Authentication credentials are required."));
         }
@@ -151,10 +153,10 @@ public abstract class AbstractSecurityFilter extends BaseFilter implements Conta
             throw new WebApplicationException(generateErrorResponse("Invalid authentication credentials."));
         }
 
-        authentication = authentication.substring("Basic ".length());
-        final String[] values = new String(Base64.base64Decode(authentication)).split(":");
+        final String authenticationBase64Segment = authentication.substring("Basic ".length());
+        final String[] values = new String(Base64.base64Decode(authenticationBase64Segment)).split(":");
         if (values.length < 2) {
-            logger.info("Authentication failed: invalid authentication string format [" + authentication + "]");
+            logger.info("Authentication failed: invalid authentication string format [" + authenticationBase64Segment + "]");
             throw new WebApplicationException(generateErrorResponse("Invalid authentication credentials."));
         }
 
@@ -170,7 +172,7 @@ public abstract class AbstractSecurityFilter extends BaseFilter implements Conta
             user = new User(username, "user");
             logger.debug("Authentication succeeded for [" + username + "]");
         } else {
-            logger.info("Authentication failed: invalid username or password [" + authentication + "]");
+            logger.info("Authentication failed: invalid username or password [" + authenticationBase64Segment + "]");
             throw new WebApplicationException(generateErrorResponse("Invalid username or password."));
         }
 
@@ -180,7 +182,7 @@ public abstract class AbstractSecurityFilter extends BaseFilter implements Conta
     private Response generateErrorResponse(final String message) {
         final Map<String, String> errorEntity = new HashMap<String, String>() {{
             put("message", message);
-            put("version", RexsterApplication.getVersion());
+            put("version", RexsterApplicationImpl.getVersion());
         }};
 
         return Response.status(Response.Status.UNAUTHORIZED)
@@ -191,8 +193,8 @@ public abstract class AbstractSecurityFilter extends BaseFilter implements Conta
 
     public class Authorizer implements SecurityContext {
 
-        private User user;
-        private Principal principal;
+        private final User user;
+        private final Principal principal;
 
         public Authorizer(final User user) {
             this.user = user;
@@ -223,8 +225,8 @@ public abstract class AbstractSecurityFilter extends BaseFilter implements Conta
 
     public class User {
 
-        public String username;
-        public String role;
+        public final String username;
+        public final String role;
 
         public User(String username, String role) {
             this.username = username;
