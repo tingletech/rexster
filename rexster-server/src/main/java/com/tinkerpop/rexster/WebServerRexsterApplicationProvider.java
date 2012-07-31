@@ -8,6 +8,8 @@ import com.sun.jersey.spi.inject.Injectable;
 import com.sun.jersey.spi.inject.InjectableProvider;
 import org.apache.commons.configuration.XMLConfiguration;
 
+import javax.servlet.ServletContext;
+import javax.servlet.ServletConfig;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.ext.Provider;
 import java.lang.reflect.Type;
@@ -46,6 +48,30 @@ public class WebServerRexsterApplicationProvider
             rexster = new RexsterApplicationImpl(configurationProperties);
         }
     }
+
+
+    public WebServerRexsterApplicationProvider(@Context ServletContext servletContext, @Context ServletConfig servletConfig) {
+
+        if (rexster == null) {
+            if (configurationProperties == null) {
+                configurationProperties = new XMLConfiguration();
+            }
+
+            String rexsterXmlFile = servletConfig.getInitParameter("com.tinkerpop.rexster.config");
+
+            try {
+                configurationProperties.load(servletContext.getResourceAsStream(rexsterXmlFile));
+            } catch (Exception e) {
+                throw new RuntimeException("Could not locate " + rexsterXmlFile + " properties file.", e);
+            }
+
+            // configure(properties);
+
+            rexster = new RexsterApplicationImpl(configurationProperties);
+
+        }
+    }
+
 
     @Override
     public RexsterApplication getValue(HttpContext c) {
