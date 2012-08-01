@@ -35,7 +35,7 @@
             <graph-name>snac</graph-name>
             <graph-read-only>true</graph-read-only>
             <graph-type>neo4jgraph</graph-type>
-            <graph-location>/home/btingle/eac-graph-load/snac-neo4j</graph-location>
+            <graph-location>/home/snac/eac-graph-load/snac-neo4j</graph-location>
             <extensions>
                 <allows>
                     <allow>snac:*</allow>
