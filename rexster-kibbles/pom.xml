@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.tinkerpop.rexster</groupId>
+        <artifactId>rexster</artifactId>
+        <version>2.5.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+    <artifactId>rexster-kibbles</artifactId>
+    <packaging>pom</packaging>
+    <url>http://rexster.tinkerpop.com</url>
+    <name>Rexster Kibbles: General-Purpose Rexster Extensions</name>
+    <description>Rexster Kibbles is a collection of general-purpose extensions for the Rexster graph server.</description>
+    <inceptionYear>2011</inceptionYear>
+    <contributors>
+        <contributor>
+            <name>Marko A. Rodriguez</name>
+            <email>marko@markorodriguez.com</email>
+            <url>http://markorodriguez.com</url>
+        </contributor>
+        <contributor>
+            <name>Stephen Mallette</name>
+            <email>spmva@genoprime.com</email>
+            <url>http://stephen.genoprime.com</url>
+        </contributor>
+    </contributors>
+    <modules>
+        <module>frames-kibble</module>
+        <module>sample-kibbles</module>
+        <module>sparql-kibble</module>
+        <module>batch-kibble</module>
+    </modules>
+    <dependencies>
+        <!-- TinkerPop -->
+        <dependency>
+            <groupId>com.tinkerpop.blueprints</groupId>
+            <artifactId>blueprints-core</artifactId>
+            <version>${blueprints.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.tinkerpop.rexster</groupId>
+            <artifactId>rexster-core</artifactId>
+            <version>${rexster.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <!-- REST SUPPORT -->
+        <dependency>
+            <groupId>com.sun.jersey</groupId>
+            <artifactId>jersey-server</artifactId>
+            <version>${jersey.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <!-- LOGGING -->
+        <dependency>
+            <groupId>log4j</groupId>
+            <artifactId>log4j</artifactId>
+            <version>1.2.14</version>
+            <scope>provided</scope>
+        </dependency>
+        <!-- TESTING -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jmock</groupId>
+            <artifactId>jmock-junit4</artifactId>
+            <version>2.5.1</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+    <build>
+        <directory>${basedir}/target</directory>
+    </build>
+</project>
