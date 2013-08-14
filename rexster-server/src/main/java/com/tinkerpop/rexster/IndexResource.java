@@ -1,5 +1,7 @@
 package com.tinkerpop.rexster;
 
+import com.codahale.metrics.annotation.Timed;
+import com.tinkerpop.blueprints.CloseableIterable;
 import com.tinkerpop.blueprints.Edge;
 import com.tinkerpop.blueprints.Element;
 import com.tinkerpop.blueprints.Graph;
@@ -7,8 +9,10 @@ import com.tinkerpop.blueprints.Index;
 import com.tinkerpop.blueprints.IndexableGraph;
 import com.tinkerpop.blueprints.Parameter;
 import com.tinkerpop.blueprints.Vertex;
+import com.tinkerpop.blueprints.util.io.graphson.GraphSONMode;
 import com.tinkerpop.blueprints.util.io.graphson.GraphSONUtility;
 import com.tinkerpop.rexster.extension.HttpMethod;
+import com.tinkerpop.rexster.server.RexsterApplication;
 import com.tinkerpop.rexster.util.ElementHelper;
 import com.tinkerpop.rexster.util.RequestObjectHelper;
 import org.apache.log4j.Logger;
@@ -34,7 +38,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -70,6 +73,7 @@ public class IndexResource extends AbstractSubResource {
      */
     @GET
     @Produces({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON, RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
+    @Timed(name = "http.rest.indices.collection.get", absolute = true)
     public Response getAllIndices(@PathParam("graphname") final String graphName) {
         final RexsterApplicationGraph rag = this.getRexsterApplicationGraph(graphName);
         final Graph graph = rag.getGraph();
@@ -106,6 +110,8 @@ public class IndexResource extends AbstractSubResource {
 
             final JSONObject error = generateErrorObjectJsonFail(ex);
             throw new WebApplicationException(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(error).build());
+        } finally {
+            rag.tryCommit();
         }
 
         return Response.ok(this.resultObject).build();
@@ -129,6 +135,7 @@ public class IndexResource extends AbstractSubResource {
     @GET
     @Path("/{indexName}")
     @Produces({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON})
+    @Timed(name = "http.rest.indices.object.get", absolute = true)
     public Response getElementsFromIndex(@PathParam("graphname") final String graphName, @PathParam("indexName") final String indexName) {
         return this.getElementsFromIndex(graphName, indexName, false);
     }
@@ -136,12 +143,14 @@ public class IndexResource extends AbstractSubResource {
     @GET
     @Path("/{indexName}")
     @Produces({RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
+    @Timed(name = "http.rest.indices.object.get", absolute = true)
     public Response getElementsFromIndexRexsterTypedJson(@PathParam("graphname") final String graphName, @PathParam("indexName") final String indexName) {
         return this.getElementsFromIndex(graphName, indexName, true);
     }
 
     private Response getElementsFromIndex(final String graphName, final String indexName, final boolean showTypes) {
         final Index index = this.getIndexFromGraph(graphName, indexName);
+        final RexsterApplicationGraph rag = this.getRexsterApplicationGraph(graphName);
 
         String key = null;
         Object value = null;
@@ -158,17 +167,19 @@ public class IndexResource extends AbstractSubResource {
 
         final Long start = RequestObjectHelper.getStartOffset(theRequestObject);
         final Long end = RequestObjectHelper.getEndOffset(theRequestObject);
-        final List<String> returnKeys = RequestObjectHelper.getReturnKeys(theRequestObject);
+        final Set<String> returnKeys = RequestObjectHelper.getReturnKeys(theRequestObject);
+        final GraphSONMode mode = showTypes ? GraphSONMode.EXTENDED : GraphSONMode.NORMAL;
 
         long counter = 0l;
 
         if (null != index && key != null && value != null) {
+            final CloseableIterable<Element> indexElements = (CloseableIterable<Element>) index.get(key, value);
             try {
 
                 final JSONArray elementArray = new JSONArray();
-                for (Element element : (Iterable<Element>) index.get(key, value)) {
+                for (Element element : indexElements) {
                     if (counter >= start && counter < end) {
-                        elementArray.put(GraphSONUtility.jsonFromElement(element, returnKeys, showTypes));
+                        elementArray.put(GraphSONUtility.jsonFromElement(element, returnKeys, mode));
                     }
                     counter++;
                 }
@@ -182,6 +193,9 @@ public class IndexResource extends AbstractSubResource {
 
                 final JSONObject error = generateErrorObjectJsonFail(ex);
                 throw new WebApplicationException(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(error).build());
+            } finally {
+                indexElements.close();
+                rag.tryCommit();
             }
         } else if (null == index) {
             final String msg = "Could not find index [" + indexName + "] on graph [" + graphName + "]";
@@ -203,6 +217,7 @@ public class IndexResource extends AbstractSubResource {
 
     @OPTIONS
     @Path("/{indexName}/count")
+    @Timed(name = "http.rest.indices.count.get", absolute = true)
     public Response optionsIndexCount() {
         return buildOptionsResponse(HttpMethod.GET.toString());
     }
@@ -213,8 +228,10 @@ public class IndexResource extends AbstractSubResource {
     @GET
     @Path("/{indexName}/count")
     @Produces({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON, RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
+    @Timed(name = "http.rest.indices.count.get", absolute = true)
     public Response getIndexCount(@PathParam("graphname") final String graphName, @PathParam("indexName") final String indexName) {
         final Index index = this.getIndexFromGraph(graphName, indexName);
+        final RexsterApplicationGraph rag = this.getRexsterApplicationGraph(graphName);
 
         String key = null;
         Object value = null;
@@ -243,6 +260,8 @@ public class IndexResource extends AbstractSubResource {
 
                 final JSONObject error = generateErrorObjectJsonFail(ex);
                 throw new WebApplicationException(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(error).build());
+            } finally {
+                rag.tryCommit();
             }
         } else if (null == index) {
             final String msg = "Could not find index [" + indexName + "] on graph [" + graphName + "]";
@@ -265,6 +284,7 @@ public class IndexResource extends AbstractSubResource {
     @Path("/{indexName}")
     @Produces({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON, RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
     @Consumes({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON, RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
+    @Timed(name = "http.rest.indices.object.delete", absolute = true)
     public Response deleteIndex(@PathParam("graphname") final String graphName, @PathParam("indexName") final String indexName, final JSONObject json) {
         // initializes the request object with the data DELETEed to the resource.  URI parameters
         // will then be ignored when the getRequestObject is called as the request object will
@@ -284,6 +304,7 @@ public class IndexResource extends AbstractSubResource {
     @DELETE
     @Path("/{indexName}")
     @Produces({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON, RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
+    @Timed(name = "http.rest.indices.object.delete", absolute = true)
     public Response deleteIndex(@PathParam("graphname") final String graphName, @PathParam("indexName") final String indexName) {
         String key = null;
         Object value = null;
@@ -316,11 +337,11 @@ public class IndexResource extends AbstractSubResource {
         if (key == null && value == null && id == null) {
             try {
                 graph.dropIndex(indexName);
-                rag.tryStopTransactionSuccess();
+                rag.tryCommit();
             } catch (Exception ex) {
                 logger.error(ex);
 
-                rag.tryStopTransactionFailure();
+                rag.tryRollback();
 
                 final JSONObject error = generateErrorObjectJsonFail(ex);
                 throw new WebApplicationException(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(error).build());
@@ -332,13 +353,13 @@ public class IndexResource extends AbstractSubResource {
                 else
                     index.remove(key, value, graph.getEdge(id));
 
-                rag.tryStopTransactionSuccess();
+                rag.tryCommit();
                 this.resultObject.put(Tokens.QUERY_TIME, this.sh.stopWatch());
 
             } catch (JSONException ex) {
                 logger.error(ex);
 
-                rag.tryStopTransactionFailure();
+                rag.tryRollback();
 
                 final JSONObject error = generateErrorObjectJsonFail(ex);
                 throw new WebApplicationException(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(error).build());
@@ -355,18 +376,11 @@ public class IndexResource extends AbstractSubResource {
 
     }
 
-    /**
-     * POST http://host/graph/indices/indexName?key=key1&value=value1&class=vertex&id=id1
-     * Index index = graph.getIndex(indexName,...);
-     * index.put(key,value,graph.getVertex(id1));
-     * <p/>
-     * POST http://host/graph/indices/indexName?class=vertex&type=automatic&keys=[name,age]
-     * graph.createIndex(indexName,Vertex.class,AUTOMATIC, {name, age})
-     */
     @POST
     @Path("/{indexName}")
     @Produces({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON, RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
     @Consumes({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON, RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
+    @Timed(name = "http.rest.indices.object.post", absolute = true)
     public Response postIndex(@PathParam("graphname") final String graphName, @PathParam("indexName") final String indexName, final JSONObject json) {
         // initializes the request object with the data POSTed to the resource.  URI parameters
         // will then be ignored when the getRequestObject is called as the request object will
@@ -378,10 +392,11 @@ public class IndexResource extends AbstractSubResource {
     @POST
     @Path("/{indexName}")
     @Produces({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON, RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
+    @Timed(name = "http.rest.indices.object.post", absolute = true)
     public Response postIndex(@PathParam("graphname") final String graphName, @PathParam("indexName") final String indexName) {
         String clazz = null;
         Set<String> keys = null;
-        Parameter<Object, Object>[] indexParameters = new Parameter[0];
+        Parameter[] indexParameters = new Parameter[0];
 
         final JSONObject theRequestObject = this.getRequestObject();
 
@@ -450,11 +465,11 @@ public class IndexResource extends AbstractSubResource {
                 final Index newIndex;
                 try {
                     newIndex = graph.createIndex(indexName, c, indexParameters);
-                    rag.tryStopTransactionSuccess();
+                    rag.tryCommit();
                 } catch (Exception e) {
                     logger.info(e.getMessage());
 
-                    rag.tryStopTransactionFailure();
+                    rag.tryRollback();
 
                     final JSONObject error = generateErrorObject(e.getMessage());
                     throw new WebApplicationException(Response.status(Response.Status.BAD_REQUEST).entity(error).build());
@@ -489,6 +504,7 @@ public class IndexResource extends AbstractSubResource {
     @Path("/{indexName}")
     @Produces({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON, RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
     @Consumes({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON, RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
+    @Timed(name = "http.rest.indices.object.put", absolute = true)
     public Response putElementInIndex(@PathParam("graphname") final String graphName, @PathParam("indexName") final String indexName, final JSONObject json) {
         // initializes the request object with the data POSTed to the resource.  URI parameters
         // will then be ignored when the getRequestObject is called as the request object will
@@ -503,6 +519,7 @@ public class IndexResource extends AbstractSubResource {
     @PUT
     @Path("/{indexName}")
     @Produces({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON, RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
+    @Timed(name = "http.rest.indices.object.put", absolute = true)
     public Response putElementInIndex(@PathParam("graphname") final String graphName, @PathParam("indexName") final String indexName) {
         final Index index = this.getIndexFromGraph(graphName, indexName);
         final RexsterApplicationGraph rag = this.getRexsterApplicationGraph(graphName);
@@ -531,14 +548,14 @@ public class IndexResource extends AbstractSubResource {
 
         if (key != null && value != null && id != null) {
             try {
-                if (index.getIndexClass().equals(Vertex.class)) {
+                if (Vertex.class.isAssignableFrom(index.getIndexClass())) {
                     index.put(key, value, graph.getVertex(id));
-                    rag.tryStopTransactionSuccess();
-                } else if (index.getIndexClass().equals(Edge.class)) {
+                    rag.tryCommit();
+                } else if (Edge.class.isAssignableFrom(index.getIndexClass())) {
                     index.put(key, value, graph.getEdge(id));
-                    rag.tryStopTransactionSuccess();
+                    rag.tryCommit();
                 } else {
-                    rag.tryStopTransactionFailure();
+                    rag.tryRollback();
                     final JSONObject error = generateErrorObject("Index class must be either vertex or edge");
                     throw new WebApplicationException(Response.status(Response.Status.BAD_REQUEST).entity(error).build());
                 }

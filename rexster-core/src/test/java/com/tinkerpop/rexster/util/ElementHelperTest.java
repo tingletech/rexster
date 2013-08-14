@@ -24,6 +24,12 @@ public class ElementHelperTest {
     }
 
     @Test
+    public void getTypedPropertyValueStringNullPropertyValue() {
+        Object nullValue = ElementHelper.getTypedPropertyValue("(null,\"\")");
+        Assert.assertNull(nullValue);
+    }
+
+    @Test
     public void getTypedPropertyValueEmptyPropertyValue() {
         Object emptyString = ElementHelper.getTypedPropertyValue("");
         Assert.assertNotNull(emptyString);
@@ -39,6 +45,76 @@ public class ElementHelperTest {
         typedPropertyValue = ElementHelper.getTypedPropertyValue("123");
         Assert.assertNotNull(typedPropertyValue);
         Assert.assertEquals("123", typedPropertyValue);
+    }
+
+    @Test
+    public void getTypedPropertyValueNonTypedStartingWithParen() {
+        Object typedPropertyValue = ElementHelper.getTypedPropertyValue("(xyz", false);
+        Assert.assertNotNull(typedPropertyValue);
+        Assert.assertEquals("(xyz", typedPropertyValue);
+    }
+
+    @Test
+    public void getTypedPropertyValueNonTypedEndingWithParen() {
+        Object typedPropertyValue = ElementHelper.getTypedPropertyValue("xyz)", false);
+        Assert.assertNotNull(typedPropertyValue);
+        Assert.assertEquals("xyz)", typedPropertyValue);
+    }
+
+    @Test
+    public void getTypedPropertyValueNonTypedLookAlike() {
+        Object typedPropertyValue = ElementHelper.getTypedPropertyValue("(xyz,abc)", false);
+        Assert.assertNotNull(typedPropertyValue);
+        Assert.assertEquals("(xyz,abc)", typedPropertyValue);
+    }
+
+    @Test
+    public void getTypedPropertyValueNonTypedSurroundWithParen() {
+        Object typedPropertyValue = ElementHelper.getTypedPropertyValue("(xyz)", false);
+        Assert.assertNotNull(typedPropertyValue);
+        Assert.assertEquals("(xyz)", typedPropertyValue);
+    }
+
+    @Test
+    public void getTypedPropertyValueNonTypedDoubleParen() {
+        Object typedPropertyValue = ElementHelper.getTypedPropertyValue("(5R)-5,6-dihydro-5 (in DNA)", false);
+        Assert.assertNotNull(typedPropertyValue);
+        Assert.assertEquals("(5R)-5,6-dihydro-5 (in DNA)", typedPropertyValue);
+    }
+
+    @Test
+    public void getTypedPropertyValueStartingWithParen() {
+        Object typedPropertyValue = ElementHelper.getTypedPropertyValue("(string,(xyz)", true);
+        Assert.assertNotNull(typedPropertyValue);
+        Assert.assertEquals("(xyz", typedPropertyValue);
+    }
+
+    @Test
+    public void getTypedPropertyValueEndingWithParen() {
+        Object typedPropertyValue = ElementHelper.getTypedPropertyValue("(string,xyz))", true);
+        Assert.assertNotNull(typedPropertyValue);
+        Assert.assertEquals("xyz)", typedPropertyValue);
+    }
+
+    @Test
+    public void getTypedPropertyValueLookAlike() {
+        Object typedPropertyValue = ElementHelper.getTypedPropertyValue("(string,(xyz,abc))", true);
+        Assert.assertNotNull(typedPropertyValue);
+        Assert.assertEquals("(xyz,abc)", typedPropertyValue);
+    }
+
+    @Test
+    public void getTypedPropertyValueSurroundWithParen() {
+        Object typedPropertyValue = ElementHelper.getTypedPropertyValue("(string,(xyz))", true);
+        Assert.assertNotNull(typedPropertyValue);
+        Assert.assertEquals("(xyz)", typedPropertyValue);
+    }
+
+    @Test
+    public void getTypedPropertyValueDoubleParen() {
+        Object typedPropertyValue = ElementHelper.getTypedPropertyValue("(string,(5R)-5,6-dihydro-5 (in DNA))", true);
+        Assert.assertNotNull(typedPropertyValue);
+        Assert.assertEquals("(5R)-5,6-dihydro-5 (in DNA)", typedPropertyValue);
     }
 
     @Test
@@ -112,6 +188,21 @@ public class ElementHelperTest {
     }
 
     @Test
+    public void getTypedPropertyValueBooleanTyped() {
+        Object typedPropertyValue = ElementHelper.getTypedPropertyValue("(b,true)");
+        Assert.assertNotNull(typedPropertyValue);
+        Assert.assertEquals(Boolean.TRUE, typedPropertyValue);
+
+        typedPropertyValue = ElementHelper.getTypedPropertyValue("(boolean,true)");
+        Assert.assertNotNull(typedPropertyValue);
+        Assert.assertEquals(Boolean.TRUE, typedPropertyValue);
+
+        typedPropertyValue = ElementHelper.getTypedPropertyValue("(boolean,123bad)");
+        Assert.assertNotNull(typedPropertyValue);
+        Assert.assertEquals(false, typedPropertyValue);
+    }
+
+    @Test
     public void getTypedPropertyValueListNonTyped() {
         Object typedPropertyValue = ElementHelper.getTypedPropertyValue("(list,(123,321,456,678))");
         Assert.assertNotNull(typedPropertyValue);
@@ -152,16 +243,17 @@ public class ElementHelperTest {
 
     @Test
     public void getTypedPropertyValueMapNonTyped() {
-        Object typedPropertyValue = ElementHelper.getTypedPropertyValue("(map,(a=123,b=321))");
+        Object typedPropertyValue = ElementHelper.getTypedPropertyValue("(map,(a=123,b=321,c=(string,(abc))))");
         Assert.assertNotNull(typedPropertyValue);
         Assert.assertTrue(typedPropertyValue instanceof Map);
 
         Map map = (Map) typedPropertyValue;
-        Assert.assertEquals(2, map.size());
+        Assert.assertEquals(3, map.size());
         Assert.assertTrue(map.containsKey("a"));
         Assert.assertTrue(map.containsKey("b"));
         Assert.assertEquals("123", map.get("a"));
         Assert.assertEquals("321", map.get("b"));
+        Assert.assertEquals("(abc)", map.get("c"));
     }
 
     @Test
@@ -367,5 +459,57 @@ public class ElementHelperTest {
 
         List list = (List) map.get("g");
         Assert.assertEquals("innera", list.get(0));
+    }
+
+    @Test
+    public void getTypedPropertValueRawJSONObjectTypeConversion() {
+        JSONObject json = new JSONObject();
+
+        try {
+            json.put("a", "testa");
+            json.put("b", "(integer,2)");
+            JSONObject inner = new JSONObject();
+            inner.put("a", "inner");
+            inner.put("b", "(integer,3)");
+            json.put("c", inner);
+        } catch (JSONException jse) {
+        }
+
+        Object typedPropertyValue = ElementHelper.getTypedPropertyValue(json,true);
+
+        Assert.assertTrue(typedPropertyValue instanceof Map);
+        Map map = (Map) typedPropertyValue;
+
+        Assert.assertEquals("testa", map.get("a"));
+        Assert.assertEquals(2, map.get("b"));
+        Map innerMap = (Map) map.get("c");
+        Assert.assertEquals("inner", innerMap.get("a"));
+        Assert.assertEquals(3, innerMap.get("b"));
+    }
+
+    @Test
+    public void getTypedPropertValueRawJSONObjectNoTypeConversion() {
+        JSONObject json = new JSONObject();
+
+        try {
+            json.put("a", "testa");
+            json.put("b", "(integer,testa)");
+            JSONObject inner = new JSONObject();
+            inner.put("a", "inner");
+            inner.put("b", "(6-4,inner)");
+            json.put("c", inner);
+        } catch (JSONException jse) {
+        }
+
+        Object typedPropertyValue = ElementHelper.getTypedPropertyValue(json,false);
+
+        Assert.assertTrue(typedPropertyValue instanceof Map);
+        Map map = (Map) typedPropertyValue;
+
+        Assert.assertEquals("testa", map.get("a"));
+        Assert.assertEquals("(integer,testa)", map.get("b"));
+        Map innerMap = (Map) map.get("c");
+        Assert.assertEquals("inner", innerMap.get("a"));
+        Assert.assertEquals("(6-4,inner)", innerMap.get("b"));
     }
 }

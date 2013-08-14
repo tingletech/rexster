@@ -1,16 +1,24 @@
 package com.tinkerpop.rexster.extension;
 
+import com.tinkerpop.blueprints.Element;
+import com.tinkerpop.blueprints.util.io.graphson.GraphSONMode;
+import com.tinkerpop.blueprints.util.io.graphson.GraphSONUtility;
 import com.tinkerpop.rexster.Tokens;
 import org.apache.commons.lang.StringUtils;
+import org.codehaus.jettison.json.JSONArray;
+import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 
 import javax.ws.rs.core.Response;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Wraps the Jersey response object with some simple response builder methods.
+ *
+ * @author Stephen Mallette (http://stephen.genoprime.com)
  */
 public class ExtensionResponse {
 
@@ -180,7 +188,7 @@ public class ExtensionResponse {
     }
 
     /**
-     * Generates an response with an OK status code.  Accepts a HashMap as the response value.
+     * Generates a response with an OK status code.  Accepts a HashMap as the response value.
      * It is converted to JSON.
      */
     public static ExtensionResponse ok(final Map result) {
@@ -189,6 +197,61 @@ public class ExtensionResponse {
         }
 
         return ok(new JSONObject(result));
+    }
+
+    /**
+     * Generate a response with an OK status code for an Element.  Serializes all properties in the graph Element
+     * with GraphSONMode.NORMAL.
+     */
+    public static ExtensionResponse ok(final Element result) {
+        return ok(result, null, GraphSONMode.NORMAL);
+    }
+
+    /**
+     * Generate a response with an OK status code for an Element.
+     */
+    public static ExtensionResponse ok(final Element result, final Set<String> propertyKeys, final GraphSONMode mode) {
+        if (result == null) {
+            throw new IllegalArgumentException("result cannot be null");
+        }
+
+        try {
+            return ok(GraphSONUtility.jsonFromElement(result, propertyKeys, mode));
+        } catch (JSONException jsonException) {
+            throw new RuntimeException(jsonException);
+        }
+    }
+
+    /**
+     * Generate a response with an OK status code for a iterator of graph Elements.  Serializes all properties in
+     * the graph elemetn with GraphSONMode.NORMAL.
+     */
+    public static ExtensionResponse ok(final Iterator<Element> result) {
+        return ok(result, null, GraphSONMode.NORMAL);
+    }
+
+    /**
+     * Generate a response with an OK status code for a iterator of graph Elements.
+     */
+    public static ExtensionResponse ok(final Iterator<Element> result,
+                                       final Set<String> propertyKeys, final GraphSONMode mode) {
+        if (result == null) {
+            throw new IllegalArgumentException("result cannot be null");
+        }
+
+        final JSONObject json = new JSONObject();
+        final JSONArray elementArray = new JSONArray();
+        try {
+            while(result.hasNext()) {
+                elementArray.put(GraphSONUtility.jsonFromElement(result.next(), propertyKeys, mode));
+            }
+
+            json.put(Tokens.RESULTS, elementArray);
+        } catch (JSONException jsone) {
+            throw new RuntimeException(jsone);
+        }
+
+        return ok(json);
     }
 
     public static ExtensionResponse availableOptions(final String... methods) {
@@ -201,6 +264,14 @@ public class ExtensionResponse {
      */
     public static ExtensionResponse ok(final JSONObject result) {
         return new ExtensionResponse(Response.ok(result).build());
+    }
+
+    public static ExtensionResponse badRequest(final String message, final JSONObject appendJson) {
+        return error(message, null,  Response.Status.BAD_REQUEST.getStatusCode(), null, appendJson);
+    }
+
+    public static ExtensionResponse badRequest() {
+        return new ExtensionResponse(Response.status(Response.Status.BAD_REQUEST).build());
     }
 
     public Response getJerseyResponse() {

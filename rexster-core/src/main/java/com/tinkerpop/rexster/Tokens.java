@@ -8,7 +8,7 @@ package com.tinkerpop.rexster;
  */
 public class Tokens {
 
-    public static final String REXSTER_VERSION = "2.1.0-SNAPSHOT";
+    public static final String REXSTER_VERSION = "2.5.0-SNAPSHOT";
 
     public static final String _ID = "_id";
     public static final String ID = "id";
@@ -19,7 +19,10 @@ public class Tokens {
     public static final String _PROPERTIES = "_properties";
     public static final String _DIRECTION = "_direction";
     public static final String _RETURN = "_return";
-    public static final String _LIMIT = "_limit";
+    public static final String _SKIP = "_skip";
+    public static final String _TAKE = "_take";
+    public static final String _KEY = "_key";
+    public static final String _VALUE = "_value";
     public static final String VERTEX = "vertex";
     public static final String VERTICES = "vertices";
     public static final String EDGE = "edge";
@@ -30,6 +33,8 @@ public class Tokens {
     public static final String EXTENSIONS = "extensions";
 
     public static final String REXSTER_GRAPH_PATH = "graphs.graph";
+    public static final String REXSTER_REPORTER_PATH = "metrics.reporter";
+    public static final String REXSTER_SCRIPT_ENGINE_PATH = "script-engines.script-engine";
     public static final String REXSTER_GRAPH_EXTENSIONS_ALLOWS_PATH = "extensions.allows.allow";
     public static final String REXSTER_GRAPH_EXTENSIONS_PATH = "extensions.extension";
     public static final String REXSTER_GRAPH_NAME = "graph-name";
@@ -40,6 +45,18 @@ public class Tokens {
     public static final String REXSTER_GRAPH_PROPERTIES = "properties";
     public static final String REXSTER_GRAPH_BUFFER_SIZE = "graph-buffer-size";
     public static final String REXSTER_GRAPH_HA = "graph-high-availability";
+    public static final String REXSTER_REPORTER_TIME_UNIT = "report-time-unit";
+    public static final String REXSTER_REPORTER_PERIOD = "report-period";
+    public static final String REXSTER_REPORTER_RATES_TIME_UNIT = "rates-time-unit";
+    public static final String REXSTER_REPORTER_DURATION_TIME_UNIT = "duration-time-unit";
+    public static final String REXSTER_REPORTER_HOSTS = "hosts";
+    public static final String REXSTER_REPORTER_PREFIX = "prefix";
+    public static final String REXSTER_REPORTER_EXCLUDES = "excludes";
+    public static final String REXSTER_REPORTER_INCLUDES = "includes";
+
+    public static final String REXSTER_SECURITY_NONE = "none";
+    public static final String REXSTER_SECURITY_DEFAULT = "default";
+    public static final String REXSTER_SECURITY_AUTH = "security.authentication";
 
     public static final String REXPRO_REXSTER_CONTEXT = "rexster";
 

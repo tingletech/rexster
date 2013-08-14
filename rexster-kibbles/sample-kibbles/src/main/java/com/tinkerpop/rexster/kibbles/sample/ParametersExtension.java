@@ -25,7 +25,7 @@ public class ParametersExtension extends AbstractSampleExtension {
     public static final String EXTENSION_NAME = "parameters";
 
     /**
-     * http://localhost/graphs/tinkergraph/tp-sample/parameters/list?some-string=test
+     * http://localhost/graphs/tinkergraph/tp-sample/parameters/string?some-string=test
      */
     @ExtensionDefinition(extensionPoint = ExtensionPoint.GRAPH, path = "string")
     @ExtensionDescriptor(description = "pass a string parameter to be used in the response.")
@@ -48,7 +48,7 @@ public class ParametersExtension extends AbstractSampleExtension {
     }
 
     /**
-     * http://localhost/graphs/tinkergraph/tp-sample/parameters/list?some-integer=1
+     * http://localhost/graphs/tinkergraph/tp-sample/parameters/integer?some-integer=1
      */
     @ExtensionDefinition(extensionPoint = ExtensionPoint.GRAPH, path = "integer")
     @ExtensionDescriptor(description = "pass an integer parameter to be used in the response.")
@@ -67,6 +67,19 @@ public class ParametersExtension extends AbstractSampleExtension {
 
         Map<String, Integer> map = new HashMap<String, Integer>();
         map.put("some-integer", reply.intValue());
+        return ExtensionResponse.ok(map);
+    }
+
+    /**
+     * http://localhost/graphs/tinkergraph/tp-sample/parameters/float?some-float=test
+     */
+    @ExtensionDefinition(extensionPoint = ExtensionPoint.GRAPH, path = "float")
+    @ExtensionDescriptor(description = "pass a string parameter to be used in the response.")
+    public ExtensionResponse evaluateSomeFloat(@RexsterContext RexsterResourceContext context,
+                                               @RexsterContext Graph graph,
+                                               @ExtensionRequestParameter(name = "some-float", description = "a float to reply with") Float reply) {
+        Map<String, String> map = new HashMap<String, String>();
+        map.put("some-float", reply.toString());
         return ExtensionResponse.ok(map);
     }
 
@@ -135,9 +148,31 @@ public class ParametersExtension extends AbstractSampleExtension {
     @ExtensionDescriptor(description = "pass an object parameter to be used in the response.")
     public ExtensionResponse evaluateSomeObject(@RexsterContext RexsterResourceContext context,
                                                 @RexsterContext Graph graph,
-                                                @ExtensionRequestParameter(name = "a", description = "a list to reply with") Integer reply,
-                                                @ExtensionRequestParameter(name = "b", description = "a list to reply with") JSONObject replyObject,
+                                                @ExtensionRequestParameter(name = "a", description = "an integer to reply with") Integer reply,
+                                                @ExtensionRequestParameter(name = "b", description = "an object to reply with") JSONObject replyObject,
                                                 @ExtensionRequestParameter(name = "c", description = "a list to reply with") JSONArray replyList) {
+        Map<String, Object> map = new HashMap<String, Object>();
+        map.put("a", reply);
+        map.put("b", replyObject);
+        map.put("c", replyList);
+        return ExtensionResponse.ok(map);
+    }
+
+    /**
+     * Accessing:
+     * <p/>
+     * http://localhost:8182/graphs/tinkergraph/tp-sample/parameters/object
+     * <p/>
+     * would yield three parameters that could be injected to this method: an integer for "a",
+     * a JSONObject for "b" and a JSONArray for "c".
+     */
+    @ExtensionDefinition(extensionPoint = ExtensionPoint.GRAPH, path = "object-default")
+    @ExtensionDescriptor(description = "pass an object parameter to be used in the response.")
+    public ExtensionResponse evaluateSomeObjectWithDefaults(@RexsterContext RexsterResourceContext context,
+                                                            @RexsterContext Graph graph,
+                                                            @ExtensionRequestParameter(name = "a", defaultValue = "1", description = "an integer to reply with") Integer reply,
+                                                            @ExtensionRequestParameter(name = "b", defaultValue = "{\"a\":\"marko\",\"b\":true, \"c\": {\"a\":\"peter\"}}", description = "an object to reply with") JSONObject replyObject,
+                                                            @ExtensionRequestParameter(name = "c", defaultValue = "[\"marko\",\"povel\"]", description = "a list to reply with") JSONArray replyList) {
         Map<String, Object> map = new HashMap<String, Object>();
         map.put("a", reply);
         map.put("b", replyObject);

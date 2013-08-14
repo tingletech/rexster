@@ -7,6 +7,9 @@ import com.tinkerpop.rexster.util.MockTinkerTransactionalGraph;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConversionException;
 
+/**
+ * @author Stephen Mallette (http://stephen.genoprime.com)
+ */
 public class TinkerGraphGraphConfiguration implements GraphConfiguration {
 
     public Graph configureGraphInstance(final Configuration properties) throws GraphConfigurationException {
@@ -21,15 +24,41 @@ public class TinkerGraphGraphConfiguration implements GraphConfiguration {
             throw new GraphConfigurationException(ce);
         }
 
+        String fileType;
+        try {
+            fileType = properties.getString("graph-storage", "");
+        } catch (IllegalArgumentException iae) {
+            // default to java serialization
+            fileType = "";
+        }
+
         try {
             if (graphFile == null || graphFile.length() == 0) {
                 // pure in memory if graph file is specified
                 return mockTx ? new MockTinkerTransactionalGraph() : new TinkerGraph();
             } else {
-                return mockTx ? new MockTinkerTransactionalGraph(graphFile) : new TinkerGraph(graphFile);
+                return mockTx ? new MockTinkerTransactionalGraph(graphFile, getFileType(fileType)) : new TinkerGraph(graphFile, getFileType(fileType));
             }
         } catch (Exception ex) {
             throw new GraphConfigurationException(ex);
+        }
+    }
+
+    private TinkerGraph.FileType getFileType(final String fileType)
+    {
+        String fileTypeLower = fileType.toLowerCase();
+
+        if (fileTypeLower.equals("graphson")) {
+            return TinkerGraph.FileType.GRAPHSON;
+        }
+        else if (fileTypeLower.equals("graphml")) {
+            return TinkerGraph.FileType.GRAPHML;
+        }
+        else if (fileTypeLower.equals(("gml"))) {
+            return TinkerGraph.FileType.GML;
+        }
+        else {
+            return TinkerGraph.FileType.JAVA;
         }
     }
 }

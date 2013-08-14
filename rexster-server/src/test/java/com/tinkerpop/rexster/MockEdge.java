@@ -1,8 +1,8 @@
 package com.tinkerpop.rexster;
 
+import com.tinkerpop.blueprints.Direction;
 import com.tinkerpop.blueprints.Edge;
 import com.tinkerpop.blueprints.Vertex;
-import com.tinkerpop.blueprints.Direction;
 import com.tinkerpop.blueprints.util.ExceptionFactory;
 
 import java.util.Hashtable;
@@ -42,6 +42,11 @@ public class MockEdge implements Edge {
     @Override
     public Object removeProperty(String key) {
         return this.properties.remove(key);
+    }
+
+    @Override
+    public void remove() {
+        throw new UnsupportedOperationException();
     }
 
     @Override

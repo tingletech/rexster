@@ -3,6 +3,7 @@ package com.tinkerpop.rexster.gremlin.converter;
 import com.tinkerpop.blueprints.impls.tg.TinkerGraph;
 import com.tinkerpop.blueprints.impls.tg.TinkerGraphFactory;
 import com.tinkerpop.pipes.util.structures.Table;
+import com.tinkerpop.rexster.protocol.serializer.msgpack.templates.ResultsConverter;
 import org.junit.Assert;
 import org.junit.Test;
 import org.msgpack.MessagePack;
@@ -12,16 +13,15 @@ import org.msgpack.type.Value;
 import org.msgpack.type.ValueFactory;
 import org.msgpack.unpacker.BufferUnpacker;
 import org.msgpack.unpacker.Converter;
-import org.msgpack.unpacker.UnpackerIterator;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
-import static org.msgpack.template.Templates.tMap;
 import static org.msgpack.template.Templates.TString;
 import static org.msgpack.template.Templates.TValue;
+import static org.msgpack.template.Templates.tMap;
 
 
 public class MsgPackResultConverterTest {
@@ -53,17 +53,18 @@ public class MsgPackResultConverterTest {
 
         Assert.assertNotNull(results);
 
-        final BufferUnpacker unpacker = msgpack.createBufferUnpacker(results);
 
-        final Template<Map<String, String>> mapTmpl = tMap(TString, TString);
+        final Object unpackedObj = ResultsConverter.deserializeObject(this.msgpack.read(results));
+        Assert.assertTrue(unpackedObj instanceof ArrayList);
+        final ArrayList unpacked = (ArrayList) unpackedObj;
 
-        Map<String, String> mapX = unpacker.read(mapTmpl);
+        Map<String, String> mapX = (Map<String, String>) unpacked.get(0);
         Assert.assertTrue(mapX.containsKey("col1"));
         Assert.assertTrue(mapX.containsKey("col2"));
         Assert.assertEquals("x1", mapX.get("col1"));
         Assert.assertEquals("x2", mapX.get("col2"));
 
-        Map<String, String> mapY = unpacker.read(mapTmpl);
+        Map<String, String> mapY = (Map<String, String>) unpacked.get(1);
         Assert.assertTrue(mapY.containsKey("col1"));
         Assert.assertTrue(mapY.containsKey("col2"));
         Assert.assertEquals("y1", mapY.get("col1"));
@@ -76,7 +77,12 @@ public class MsgPackResultConverterTest {
         byte[] converted = this.converter.convert(g.getVertices());
 
         final BufferUnpacker unpacker = msgpack.createBufferUnpacker(converted);
-        final UnpackerIterator unpackerItty = unpacker.iterator();
+        final Object unpacked = unpacker.readValue();
+
+        Assert.assertTrue(unpacked instanceof Iterable);
+
+        final Iterator unpackerItty = ((Iterable) unpacked).iterator();
+
         int counter = 0;
         while (unpackerItty.hasNext()) {
             unpackerItty.next();
@@ -99,14 +105,18 @@ public class MsgPackResultConverterTest {
         Assert.assertNotNull(converted);
 
         final BufferUnpacker unpacker = msgpack.createBufferUnpacker(converted);
-        final UnpackerIterator unpackerItty = unpacker.iterator();
+        final Object unpacked = unpacker.readValue();
+
+        Assert.assertTrue(unpacked instanceof Iterable);
+
+        final Iterator unpackerItty = ((Iterable) unpacked).iterator();
 
         int counter = 0;
         boolean matchX = false;
         boolean matchY = false;
 
         while (unpackerItty.hasNext()) {
-            final Value v = unpackerItty.next();
+            final Value v = (Value) unpackerItty.next();
             if (v.asRawValue().getString().equals("x")) {
                 matchX = true;
             }
@@ -133,14 +143,18 @@ public class MsgPackResultConverterTest {
         byte[] converted = this.converter.convert(iterable);
 
         final BufferUnpacker unpacker = msgpack.createBufferUnpacker(converted);
-        final UnpackerIterator unpackerItty = unpacker.iterator();
+        final Object unpacked = unpacker.readValue();
+
+        Assert.assertTrue(unpacked instanceof Iterable);
+
+        final Iterator unpackerItty = ((Iterable) unpacked).iterator();
 
         int counter = 0;
         boolean matchX = false;
         boolean matchY = false;
 
         while (unpackerItty.hasNext()) {
-            final Value v = unpackerItty.next();
+            final Value v = (Value) unpackerItty.next();
             if (v.asRawValue().getString().equals("x")) {
                 matchX = true;
             }
@@ -168,7 +182,8 @@ public class MsgPackResultConverterTest {
         byte[] converted = this.converter.convert(iterable);
 
         final BufferUnpacker unpacker = msgpack.createBufferUnpacker(converted);
-        final UnpackerIterator unpackerItty = unpacker.iterator();
+        final Object unpacked = unpacker.readValue();
+        final Iterator unpackerItty = ((Iterable) unpacked).iterator();
 
         int counter = 0;
         boolean matchX = false;
@@ -176,7 +191,7 @@ public class MsgPackResultConverterTest {
         boolean matchNil = false;
 
         while (unpackerItty.hasNext()) {
-            final Value v = unpackerItty.next();
+            final Value v = (Value) unpackerItty.next();
             if (v.isRawValue() && v.asRawValue().getString().equals("x")) {
                 matchX = true;
             }

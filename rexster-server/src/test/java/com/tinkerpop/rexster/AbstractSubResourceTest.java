@@ -7,9 +7,10 @@ import com.tinkerpop.rexster.extension.ExtensionMethod;
 import com.tinkerpop.rexster.extension.ExtensionPoint;
 import com.tinkerpop.rexster.extension.ExtensionResponse;
 import com.tinkerpop.rexster.extension.ExtensionSegmentSet;
-import com.tinkerpop.rexster.extension.GremlinExtension;
 import com.tinkerpop.rexster.extension.HttpMethod;
 import com.tinkerpop.rexster.extension.RexsterExtension;
+import com.tinkerpop.rexster.gremlin.GremlinExtension;
+import com.tinkerpop.rexster.server.RexsterApplication;
 import junit.framework.Assert;
 import org.codehaus.jettison.json.JSONObject;
 import org.jmock.Expectations;
@@ -27,6 +28,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+/**
+ * @author Stephen Mallette (http://stephen.genoprime.com)
+ */
 public class AbstractSubResourceTest {
     private Mockery mockery = new JUnit4Mockery();
     private MockAbstractSubResource mockResource;

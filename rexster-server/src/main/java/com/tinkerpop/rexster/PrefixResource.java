@@ -1,7 +1,9 @@
 package com.tinkerpop.rexster;
 
+import com.codahale.metrics.annotation.Timed;
 import com.tinkerpop.blueprints.impls.sail.SailGraph;
 import com.tinkerpop.rexster.extension.HttpMethod;
+import com.tinkerpop.rexster.server.RexsterApplication;
 import org.apache.log4j.Logger;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
@@ -36,7 +38,7 @@ public class PrefixResource extends AbstractSubResource {
         super(null);
     }
 
-    public PrefixResource(UriInfo ui, HttpServletRequest req, RexsterApplication ra) {
+    public PrefixResource(final UriInfo ui, final HttpServletRequest req, final RexsterApplication ra) {
         super(ra);
         this.httpServletRequest = req;
         this.uriInfo = ui;
@@ -50,6 +52,7 @@ public class PrefixResource extends AbstractSubResource {
 
     @GET
     @Produces({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON, RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
+    @Timed(name = "http.rest.prefixes.collection.get", absolute = true)
     public Response getPrefixes(@PathParam("graphname") String graphName) {
 
         final RexsterApplicationGraph rag = this.getRexsterApplicationGraph(graphName);
@@ -75,6 +78,8 @@ public class PrefixResource extends AbstractSubResource {
             logger.error(re);
             final JSONObject error = generateErrorObject(re.getMessage(), re);
             throw new WebApplicationException(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(error).build());
+        } finally {
+            rag.tryCommit();
         }
     }
 
@@ -88,10 +93,11 @@ public class PrefixResource extends AbstractSubResource {
     @GET
     @Path("/{prefix}")
     @Produces({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON, RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
+    @Timed(name = "http.rest.prefixes.object.get", absolute = true)
     public Response getSinglePrefix(@PathParam("graphname") String graphName, @PathParam("prefix") String prefix) {
 
+        final RexsterApplicationGraph rag = this.getRexsterApplicationGraph(graphName);
         try {
-            final RexsterApplicationGraph rag = this.getRexsterApplicationGraph(graphName);
             final SailGraph graph = ((SailGraph) rag.getUnwrappedGraph());
             this.resultObject.put(Tokens.RESULTS, graph.getNamespaces().get(prefix));
             this.resultObject.put(Tokens.QUERY_TIME, this.sh.stopWatch());
@@ -105,12 +111,15 @@ public class PrefixResource extends AbstractSubResource {
             logger.error(re);
             JSONObject error = generateErrorObject(re.getMessage(), re);
             throw new WebApplicationException(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(error).build());
+        } finally {
+            rag.tryCommit();
         }
     }
 
     @DELETE
     @Path("/{prefix}")
     @Produces({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON, RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
+    @Timed(name = "http.rest.prefixes.object.delete", absolute = true)
     public Response deleteSinglePrefix(@PathParam("graphname") String graphName, @PathParam("prefix") String prefix) {
 
         final RexsterApplicationGraph rag = this.getRexsterApplicationGraph(graphName);
@@ -118,19 +127,19 @@ public class PrefixResource extends AbstractSubResource {
             final SailGraph graph = ((SailGraph) rag.getUnwrappedGraph());
             graph.removeNamespace(prefix);
 
-            rag.tryStopTransactionSuccess();
+            rag.tryCommit();
 
             this.resultObject.put(Tokens.QUERY_TIME, this.sh.stopWatch());
 
             return Response.ok(this.resultObject).build();
         } catch (JSONException ex) {
             logger.error(ex);
-            rag.tryStopTransactionFailure();
+            rag.tryRollback();
             JSONObject error = generateErrorObjectJsonFail(ex);
             throw new WebApplicationException(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(error).build());
         } catch (RuntimeException re) {
             logger.error(re);
-            rag.tryStopTransactionFailure();
+            rag.tryRollback();
             JSONObject error = generateErrorObject(re.getMessage(), re);
             throw new WebApplicationException(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(error).build());
         }
@@ -139,6 +148,7 @@ public class PrefixResource extends AbstractSubResource {
     @POST
     @Produces({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON, RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
     @Consumes({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON, RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
+    @Timed(name = "http.rest.prefixes.object.post", absolute = true)
     public Response postSinglePrefix(@PathParam("graphname") String graphName, JSONObject json) {
         this.setRequestObject(json);
         return this.postSinglePrefix(graphName);
@@ -146,6 +156,7 @@ public class PrefixResource extends AbstractSubResource {
 
     @POST
     @Produces({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON, RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
+    @Timed(name = "http.rest.prefixes.object.post", absolute = true)
     public Response postSinglePrefix(@PathParam("graphname") String graphName) {
         final RexsterApplicationGraph rag = this.getRexsterApplicationGraph(graphName);
         final JSONObject reqObject = this.getRequestObject();
@@ -159,19 +170,19 @@ public class PrefixResource extends AbstractSubResource {
             final SailGraph graph = ((SailGraph) rag.getUnwrappedGraph());
             graph.addNamespace(reqObject.optString("prefix"), reqObject.optString("namespace"));
 
-            rag.tryStopTransactionSuccess();
+            rag.tryCommit();
 
             this.resultObject.put(Tokens.QUERY_TIME, this.sh.stopWatch());
 
             return Response.ok(this.resultObject).build();
         } catch (JSONException ex) {
             logger.error(ex);
-            rag.tryStopTransactionFailure();
+            rag.tryRollback();
             JSONObject error = generateErrorObjectJsonFail(ex);
             throw new WebApplicationException(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(error).build());
         } catch (RuntimeException re) {
             logger.error(re);
-            rag.tryStopTransactionFailure();
+            rag.tryRollback();
             JSONObject error = generateErrorObject(re.getMessage(), re);
             throw new WebApplicationException(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(error).build());
         }

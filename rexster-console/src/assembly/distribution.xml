@@ -1,4 +1,5 @@
 <assembly>
+    <id>distribution</id>
     <formats>
         <format>zip</format>
     </formats>
@@ -12,6 +13,9 @@
                 <include>*.sh</include>
                 <include>*.bat</include>
             </includes>
+        </fileSet>
+        <fileSet>
+            <directory>../doc</directory>
         </fileSet>
         <fileSet>
             <directory>src</directory>

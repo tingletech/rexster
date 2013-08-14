@@ -1,17 +1,114 @@
 Rexster: A Graph Server
 "http://rexster.tinkerpop.com":http://rexster.tinkerpop.com
 
-h2. Rexster 0.y.z
+h2. Rexster 2.y.z
 
 !https://github.com/tinkerpop/rexster/raw/master/doc/images/rexster-2.png!
 
-h3. Version 2.1.0 (NOT OFFICIALLY RELEASED YET)
+h3. Version 2.5.0 (NOT OFFICIALLY RELEASED YET)
 
 ```xml
 <dependency>
   <groupId>com.tinkerpop.rexster</groupId>
-  <artifactId>rexster</artifactId>
-  <version>2.1.0-SNAPSHOT</version>
+  <artifactId>rexster-core</artifactId>
+  <version>2.5.0-SNAPSHOT</version>
+</dependency>
+```
+
+==<hr/>==
+
+h3. Version 2.4.0 (August 4, 2013)
+
+```xml
+<dependency>
+  <groupId>com.tinkerpop.rexster</groupId>
+  <artifactId>rexster-core</artifactId>
+  <version>2.4.0</version>
+</dependency>
+```
+
+* Support server monitoring features via "Metrics":http://metrics.codahale.com/
+* Add performance testing.
+* The port rexster serves HTTP/REST on can no longer be overriden from @rexster.sh@.
+* Moved ==rexster-*.sh and rexster-*.bat== to bin/ (noticeable to developers of source only)
+* Changes to @rexster.xml@ no longer require a restart of Rexster to become available.
+* Allow multiple and separate Script Engine configurations with the addition of the @<script-engines>@ element in @rexster.xml@
+** Configuration of multiple Script Engine initialization files in @rexster.xml@.
+** Configuration of additional imports to the Script Engine.
+* Property data types in REST now properly support @boolean@ values.
+* Serialize RexPro in the same thread that mutates the graph to prevent partial serialization of property values with Neo4j.
+* Improve logging for
+** Graph configuration errors
+** Bad/missing Gremlin intialization scripts.
+** Incoming RexPro messages
+* Changed `keys` for root of results in key indices REST API to `results` to be more consistent with the rest of the API.
+* Frames Kibble uses @FramedGraphFactory@ to create graphs.
+* Updating rexpro version to v1
+** Added JSON serializer option to rexpro
+
+==<hr/>==
+
+h3. Version 2.3.0 (March 20, 2013)
+
+```xml
+<dependency>
+  <groupId>com.tinkerpop.rexster</groupId>
+  <artifactId>rexster-core</artifactId>
+  <version>2.3.0</version>
+</dependency>
+```
+
+* Both RexPro and HTTP Server can be started independently with out configuration parameters, as all now have default values.
+* OPTIONS for extensions returns a default response.
+* Batch Kibble allows for multiple lookups within an manual or key index.
+* Rexster can initialize the Gremlin Script Engine with a script file referenced in @rexster.xml@.
+* More convenience methods for @ExtensionResponse@ to help simplify writing extensions.
+* Change default IO strategy to @leader-follower@.
+* Prevent Rexster's forced Gremlin Script Engine reset as it is now handled by the Script Engine itself.
+* Configuration in @rexster.xml@ for allowing other Script Engine flavors of Gremlin to be exposed.
+* Remove @rexster.xml@ embedded as a resource as the final fallback for configuring Rexster at startup.
+* Allow override of default embedded @log4j.properties@ file with one in the root of @REXSTER_HOME@.
+* Improve logging configurability.
+* @RexsterClient@ for Java connectivity to Rexster through RexPro.
+* Enable or disable Dog House through @rexster.xml@
+* Fix JSON serialization of @Row@ results as a @Map@ from the Gremlin Extension.
+* Improved JSON serialization for Map that uses a graph element as the key.
+
+==<hr/>==
+
+h3. Version 2.2.0 (December 19, 2012)
+
+```xml
+<dependency>
+  <groupId>com.tinkerpop.rexster</groupId>
+  <artifactId>rexster-core</artifactId>
+  <version>2.2.0</version>
+</dependency>
+```
+
+* Major refactoring and renaming of core "server" classes.
+* @ExtensionRequestParameter@ now supports a @defaultValue@.
+* Requests with @OPTIONS@ now returns @OPTIONS@ in the @Access-Control-Allow-Methods@ and a response 200 instead of 204.
+* Upgrade to Grizzly 2.2.18 and Jersey 1.14.
+* Include new configuration options in @rexster.xml@
+** @enable-jmx@ element turns on or turns off JMX monitoring.
+** @thread-pool@ section gives control over how many threads are allocated to Rexster.
+** @max-post-size@ element controls the size of the data that can be POSTed to Rexster.
+** @max-header-size@ element controls the size of the request header that can be sent to Rexster.
+** @upload-timeout-millis@ element represents the length of the time in milliseconds that Rexster will wait for an upload to occur.
+* Fixed Rexster Console where some @null@ results were not being rendered back to it.
+* Fixed Rexster Console issues where transactions were not executing properly as requests within a session were not being bound to specific threads.
+* Update the Dex configuration of @rexster.xml@ to accept an external configuration file.
+
+==<hr/>==
+
+h3. Version 2.1.0 (August 4, 2012)
+
+```xml
+<dependency>
+  <groupId>com.tinkerpop.rexster</groupId>
+  <artifactId>rexster-core</artifactId>
+  <version>2.1.0</version>
 </dependency>
 ```
 
@@ -21,6 +118,7 @@ h3. Version 2.1.0 (NOT OFFICIALLY RELEASED YET)
 * Vertex query API. 
 * Fixed issue with inconsistencies of PUT, POST, and DELETE around manual indices.
 * Restructured project to introduce rexster-core, rexster-console and rexster-protocol.
+* Integration tests now run across TinkerGraph, Neo4j, OrientDB, Titan and Dex by default (Titan is disabled by default)
 
 ==<hr/>==
 

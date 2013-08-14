@@ -1,18 +1,20 @@
 package com.tinkerpop.rexster;
 
 import com.tinkerpop.rexster.extension.HttpMethod;
+import com.tinkerpop.rexster.server.RexsterApplication;
+import com.tinkerpop.rexster.util.StatisticsHelper;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
-import org.codehaus.jettison.json.JSONTokener;
 
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
@@ -69,12 +71,15 @@ public abstract class BaseResource {
     @Context
     protected SecurityContext securityContext;
 
-    public BaseResource(RexsterApplication rexsterApplication) {
-        this.rexsterApplication = rexsterApplication;
+    public BaseResource(final RexsterApplication rexsterApplication) {
+        if (rexsterApplication != null) {
+            this.rexsterApplication = rexsterApplication;
+        }
+
         sh.stopWatch();
 
         try {
-            this.resultObject.put(Tokens.VERSION, RexsterApplicationImpl.getVersion());
+            this.resultObject.put(Tokens.VERSION, Tokens.REXSTER_VERSION);
         } catch (JSONException ex) {
             JSONObject error = generateErrorObject(ex.getMessage());
             throw new WebApplicationException(Response.status(Status.INTERNAL_SERVER_ERROR).entity(error).build());
@@ -127,9 +132,20 @@ public abstract class BaseResource {
      *
      * @param jsonObject The JSON Object.
      */
-    protected void setRequestObject(JSONObject jsonObject) {
+    protected void setRequestObject(final JSONObject jsonObject) {
         this.requestObject = jsonObject;
         this.requestObjectFlat = jsonObject;
+    }
+
+    protected void setRequestObject(final MultivaluedMap<String,String> formData) {
+        final Map<String,String> m = new HashMap<String, String>();
+        for(MultivaluedMap.Entry<String,List<String>> entry : formData.entrySet()) {
+            // only grabs the first item for JSON support
+            m.put(entry.getKey(), entry.getValue().get(0));
+        }
+
+        this.requestObject = new JSONObject(m);
+        this.requestObjectFlat = new JSONObject(m);
     }
 
     public JSONObject getRequestObject() {
@@ -148,15 +164,18 @@ public abstract class BaseResource {
      *
      * @return The request object.
      */
-    public JSONObject getRequestObject(boolean parseToJson) {
+    public JSONObject getRequestObject(final boolean parseToJson) {
         if (this.requestObject == null) {
             try {
                 this.requestObject = new JSONObject();
                 this.requestObjectFlat = new JSONObject();
 
-                if (this.httpServletRequest != null) {
-                    // unclear if this block of code is still necessary ???
-                    Map<String, String[]> queryParameters = this.httpServletRequest.getParameterMap();
+                if (this.httpServletRequest != null && this.httpServletRequest.getParameterNames().hasMoreElements()) {
+                    // unclear if this block of code is still necessary.  seems like this is here as a fallback
+                    // for when the request comes through without the parameters being extracted from an entity.
+                    // doesn't seem like it is a likely thing to happen, but can't think of the corner case that
+                    // allows it to happen.
+                    final Map<String, String[]> queryParameters = this.httpServletRequest.getParameterMap();
                     this.buildRequestObject(queryParameters);
                 }
 
@@ -164,7 +183,7 @@ public abstract class BaseResource {
 
                 logger.error(ex);
 
-                JSONObject error = generateErrorObjectJsonFail(ex);
+                final JSONObject error = generateErrorObjectJsonFail(ex);
                 throw new WebApplicationException(Response.status(Status.INTERNAL_SERVER_ERROR).entity(error).build());
             }
         }
@@ -207,14 +226,13 @@ public abstract class BaseResource {
             try {
                 if (rawValue.startsWith(Tokens.LEFT_BRACKET) && rawValue.endsWith(Tokens.RIGHT_BRACKET)) {
                     rawValue = rawValue.substring(1, rawValue.length() - 1);
-                    JSONArray array = new JSONArray();
+                    final JSONArray array = new JSONArray();
                     for (String value : rawValue.split(Tokens.COMMA)) {
                         array.put(value.trim());
                     }
                     embeddedObject.put(keys[keys.length - 1], array);
                 } else {
-                    JSONTokener tokener = new JSONTokener(rawValue);
-                    Object parsedValue = new JSONObject(tokener);
+                    final Object parsedValue = new JSONObject(rawValue);
                     embeddedObject.put(keys[keys.length - 1], parsedValue);
                 }
             } catch (JSONException e) {
@@ -223,8 +241,6 @@ public abstract class BaseResource {
         }
 
         this.requestObjectFlat = new JSONObject(flatMap);
-
-
     }
 
     protected JSONObject getNonRexsterRequest() throws JSONException {
@@ -319,10 +335,12 @@ public abstract class BaseResource {
                 HttpMethod.PUT.toString());
     }
 
-    protected Response buildOptionsResponse(String... methods) {
-        return Response.noContent()
-                .header("Access-Control-Allow-Methods", StringUtils.join(methods, ","))
-                .header("Access-Control-Allow-Headers", "*")
+    protected Response buildOptionsResponse(final String... methods) {
+        final String requestHeaders = this.httpServletRequest.getHeader("Access-Control-Request-Headers");
+        final String allowHeaders = requestHeaders == null ? "*" : requestHeaders;
+        return Response.ok()
+                .header("Access-Control-Allow-Methods", "OPTIONS," + StringUtils.join(methods, ","))
+                .header("Access-Control-Allow-Headers", allowHeaders)
                 .header("Access-Control-Max-Age", "1728000").build();
     }
 }

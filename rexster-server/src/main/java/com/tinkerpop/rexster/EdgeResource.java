@@ -1,9 +1,11 @@
 package com.tinkerpop.rexster;
 
+import com.codahale.metrics.annotation.Timed;
 import com.tinkerpop.blueprints.Edge;
 import com.tinkerpop.blueprints.Element;
 import com.tinkerpop.blueprints.Graph;
 import com.tinkerpop.blueprints.Vertex;
+import com.tinkerpop.blueprints.util.io.graphson.GraphSONMode;
 import com.tinkerpop.blueprints.util.io.graphson.GraphSONUtility;
 import com.tinkerpop.rexster.extension.ExtensionMethod;
 import com.tinkerpop.rexster.extension.ExtensionPoint;
@@ -11,6 +13,7 @@ import com.tinkerpop.rexster.extension.ExtensionResponse;
 import com.tinkerpop.rexster.extension.ExtensionSegmentSet;
 import com.tinkerpop.rexster.extension.HttpMethod;
 import com.tinkerpop.rexster.extension.RexsterExtension;
+import com.tinkerpop.rexster.server.RexsterApplication;
 import com.tinkerpop.rexster.util.ElementHelper;
 import com.tinkerpop.rexster.util.RequestObjectHelper;
 import org.apache.log4j.Logger;
@@ -32,6 +35,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Request;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
@@ -41,6 +45,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ServiceConfigurationError;
+import java.util.Set;
 
 /**
  * Resource for edges.
@@ -56,7 +61,7 @@ public class EdgeResource extends AbstractSubResource {
         super(null);
     }
 
-    public EdgeResource(UriInfo ui, HttpServletRequest req, RexsterApplication ra) {
+    public EdgeResource(final UriInfo ui, final HttpServletRequest req, final RexsterApplication ra) {
         super(ra);
         this.httpServletRequest = req;
         this.uriInfo = ui;
@@ -74,13 +79,15 @@ public class EdgeResource extends AbstractSubResource {
      */
     @GET
     @Produces({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON})
-    public Response getAllEdges(@PathParam("graphname") String graphName) {
+    @Timed(name = "http.rest.edges.collection.get", absolute = true)
+    public Response getAllEdges(@PathParam("graphname") final String graphName) {
         return this.getAllEdges(graphName, false);
     }
 
     @GET
     @Produces({RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
-    public Response getAllEdgesRexsterTypedJson(@PathParam("graphname") String graphName) {
+    @Timed(name = "http.rest.edges.collection.get", absolute = true)
+    public Response getAllEdgesRexsterTypedJson(@PathParam("graphname") final String graphName) {
         return this.getAllEdges(graphName, true);
     }
 
@@ -92,7 +99,8 @@ public class EdgeResource extends AbstractSubResource {
         final JSONObject theRequestObject = this.getRequestObject();
         final Long start = RequestObjectHelper.getStartOffset(theRequestObject);
         final Long end = RequestObjectHelper.getEndOffset(theRequestObject);
-        final List<String> returnKeys = RequestObjectHelper.getReturnKeys(this.getRequestObject());
+        final GraphSONMode mode = showTypes ? GraphSONMode.EXTENDED : GraphSONMode.NORMAL;
+        final Set<String> returnKeys = RequestObjectHelper.getReturnKeys(this.getRequestObject());
 
         String key = null;
         Object value = null;
@@ -115,7 +123,7 @@ public class EdgeResource extends AbstractSubResource {
             for (Edge edge : edges) {
                 if (counter >= start && counter < end) {
                     wasInSection = true;
-                    edgeArray.put(GraphSONUtility.jsonFromElement(edge, returnKeys, showTypes));
+                    edgeArray.put(GraphSONUtility.jsonFromElement(edge, returnKeys, mode));
                 } else if (wasInSection) {
                     break;
                 }
@@ -131,6 +139,8 @@ public class EdgeResource extends AbstractSubResource {
 
             final JSONObject error = generateErrorObjectJsonFail(ex);
             throw new WebApplicationException(Response.status(Status.INTERNAL_SERVER_ERROR).entity(error).build());
+        } finally {
+            rag.tryCommit();
         }
 
         return Response.ok(this.resultObject).build();
@@ -150,53 +160,61 @@ public class EdgeResource extends AbstractSubResource {
     @GET
     @Path("/{id}")
     @Produces({MediaType.APPLICATION_JSON})
-    public Response getSingleEdge(@PathParam("graphname") String graphName, @PathParam("id") String id) {
+    @Timed(name = "http.rest.edges.object.get", absolute = true)
+    public Response getSingleEdge(@PathParam("graphname") final String graphName, @PathParam("id") final String id) {
         return getSingleEdge(graphName, id, false, false);
     }
 
     @GET
     @Path("/{id}")
     @Produces({RexsterMediaType.APPLICATION_REXSTER_JSON})
-    public Response getSingleEdgeRexsterJson(@PathParam("graphname") String graphName, @PathParam("id") String id) {
+    @Timed(name = "http.rest.edges.object.get", absolute = true)
+    public Response getSingleEdgeRexsterJson(@PathParam("graphname") final String graphName, @PathParam("id") final String id) {
         return getSingleEdge(graphName, id, false, true);
     }
 
     @GET
     @Path("/{id}")
     @Produces({RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
-    public Response getSingleEdgeRexsterTypedJson(@PathParam("graphname") String graphName, @PathParam("id") String id) {
+    @Timed(name = "http.rest.edges.object.get", absolute = true)
+    public Response getSingleEdgeRexsterTypedJson(@PathParam("graphname") final String graphName, @PathParam("id") final String id) {
         return getSingleEdge(graphName, id, true, true);
     }
 
-    private Response getSingleEdge(String graphName, String id, boolean showTypes, boolean showHypermedia) {
-        final Edge edge = this.getRexsterApplicationGraph(graphName).getGraph().getEdge(id);
+    private Response getSingleEdge(final String graphName, final String id, final boolean showTypes, final boolean showHypermedia) {
+        final RexsterApplicationGraph rag = this.getRexsterApplicationGraph(graphName);
 
-        if (null != edge) {
-            try {
-                JSONObject theRequestObject = this.getRequestObject();
-                List<String> returnKeys = RequestObjectHelper.getReturnKeys(theRequestObject);
+        try {
+            final Edge edge = rag.getGraph().getEdge(id);
 
-                this.resultObject.put(Tokens.RESULTS, GraphSONUtility.jsonFromElement(edge, returnKeys, showTypes));
+            if (null != edge) {
+                final JSONObject theRequestObject = this.getRequestObject();
+                final GraphSONMode mode = showTypes ? GraphSONMode.EXTENDED : GraphSONMode.NORMAL;
+                final Set<String> returnKeys = RequestObjectHelper.getReturnKeys(theRequestObject);
+
+                this.resultObject.put(Tokens.RESULTS, GraphSONUtility.jsonFromElement(edge, returnKeys, mode));
                 this.resultObject.put(Tokens.QUERY_TIME, this.sh.stopWatch());
 
                 if (showHypermedia) {
-                    RexsterApplicationGraph rag = this.getRexsterApplicationGraph(graphName);
-                    JSONArray extensionsList = rag.getExtensionHypermedia(ExtensionPoint.EDGE, this.getUriPath());
+                    final JSONArray extensionsList = rag.getExtensionHypermedia(ExtensionPoint.EDGE, this.getUriPath());
                     if (extensionsList != null) {
                         this.resultObject.put(Tokens.EXTENSIONS, extensionsList);
                     }
                 }
-            } catch (JSONException ex) {
-                logger.error(ex);
+            } else {
+                final String msg = "Edge with id [" + id + "] cannot be found.";
+                logger.info(msg);
 
-                JSONObject error = generateErrorObjectJsonFail(ex);
-                throw new WebApplicationException(Response.status(Status.INTERNAL_SERVER_ERROR).entity(error).build());
+                final JSONObject error = generateErrorObject(msg);
+                throw new WebApplicationException(Response.status(Status.NOT_FOUND).entity(error).build());
             }
-        } else {
-            String msg = "Edge with id [" + id + "] cannot be found.";
-            logger.info(msg);
-            JSONObject error = generateErrorObject(msg);
-            throw new WebApplicationException(Response.status(Status.NOT_FOUND).entity(error).build());
+        } catch (JSONException ex) {
+            logger.error(ex);
+
+            final JSONObject error = generateErrorObjectJsonFail(ex);
+            throw new WebApplicationException(Response.status(Status.INTERNAL_SERVER_ERROR).entity(error).build());
+        } finally {
+            rag.tryCommit();
         }
 
         return Response.ok(this.resultObject).build();
@@ -205,76 +223,101 @@ public class EdgeResource extends AbstractSubResource {
     @HEAD
     @Path("/{id}/{extension: .+}")
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response headEdgeExtension(@PathParam("graphname") String graphName, @PathParam("id") String id, JSONObject json) {
+    public Response headEdgeExtension(@PathParam("graphname") final String graphName, @PathParam("id") final String id, final JSONObject json) {
         this.setRequestObject(json);
         return this.executeEdgeExtension(graphName, id, HttpMethod.HEAD);
     }
 
     @HEAD
     @Path("/{id}/{extension: .+}")
-    public Response headEdgeExtension(@PathParam("graphname") String graphName, @PathParam("id") String id) {
+    public Response headEdgeExtension(@PathParam("graphname") final String graphName, @PathParam("id") final String id) {
         return this.executeEdgeExtension(graphName, id, HttpMethod.HEAD);
     }
 
     @PUT
     @Path("/{id}/{extension: .+}")
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response putEdgeExtension(@PathParam("graphname") String graphName, @PathParam("id") String id, JSONObject json) {
+    @Timed(name = "http.rest.edges.object.put", absolute = true)
+    public Response putEdgeExtension(@PathParam("graphname") final String graphName, @PathParam("id") final String id, final JSONObject json) {
         this.setRequestObject(json);
         return this.executeEdgeExtension(graphName, id, HttpMethod.PUT);
     }
 
     @PUT
     @Path("/{id}/{extension: .+}")
-    public Response putEdgeExtension(@PathParam("graphname") String graphName, @PathParam("id") String id) {
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Timed(name = "http.rest.edges.object.put", absolute = true)
+    public Response putEdgeExtension(@PathParam("graphname") final String graphName, @PathParam("id") final String id, final MultivaluedMap<String, String> formParams) {
+        this.setRequestObject(formParams);
+        return this.executeEdgeExtension(graphName, id, HttpMethod.PUT);
+    }
+
+    @PUT
+    @Path("/{id}/{extension: .+}")
+    @Timed(name = "http.rest.edges.object.put", absolute = true)
+    public Response putEdgeExtension(@PathParam("graphname") final String graphName, @PathParam("id") final String id) {
         return this.executeEdgeExtension(graphName, id, HttpMethod.PUT);
     }
 
     @OPTIONS
     @Path("/{id}/{extension: .+}")
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response optionsEdgeExtension(@PathParam("graphname") String graphName, @PathParam("id") String id, JSONObject json) {
+    public Response optionsEdgeExtension(@PathParam("graphname") final String graphName, @PathParam("id") final String id, final JSONObject json) {
         this.setRequestObject(json);
         return this.executeEdgeExtension(graphName, id, HttpMethod.OPTIONS);
     }
 
     @OPTIONS
     @Path("/{id}/{extension: .+}")
-    public Response optionsEdgeExtension(@PathParam("graphname") String graphName, @PathParam("id") String id) {
+    public Response optionsEdgeExtension(@PathParam("graphname") final String graphName, @PathParam("id") final String id) {
         return this.executeEdgeExtension(graphName, id, HttpMethod.OPTIONS);
     }
 
     @DELETE
     @Path("/{id}/{extension: .+}")
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response deleteEdgeExtension(@PathParam("graphname") String graphName, @PathParam("id") String id, JSONObject json) {
+    @Timed(name = "http.rest.edges.object.delete", absolute = true)
+    public Response deleteEdgeExtension(@PathParam("graphname") final String graphName, @PathParam("id") final String id, final JSONObject json) {
         this.setRequestObject(json);
         return this.executeEdgeExtension(graphName, id, HttpMethod.DELETE);
     }
 
     @DELETE
     @Path("/{id}/{extension: .+}")
-    public Response deleteEdgeExtension(@PathParam("graphname") String graphName, @PathParam("id") String id) {
+    @Timed(name = "http.rest.edges.object.delete", absolute = true)
+    public Response deleteEdgeExtension(@PathParam("graphname") final String graphName, @PathParam("id") final String id) {
         return this.executeEdgeExtension(graphName, id, HttpMethod.DELETE);
     }
 
     @POST
     @Path("/{id}/{extension: .+}")
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response postEdgeExtension(@PathParam("graphname") String graphName, @PathParam("id") String id, JSONObject json) {
+    @Timed(name = "http.rest.edges.object.post", absolute = true)
+    public Response postEdgeExtension(@PathParam("graphname") final String graphName, @PathParam("id") final String id, final JSONObject json) {
         this.setRequestObject(json);
         return this.executeEdgeExtension(graphName, id, HttpMethod.POST);
     }
 
     @POST
     @Path("/{id}/{extension: .+}")
-    public Response postEdgeExtension(@PathParam("graphname") String graphName, @PathParam("id") String id) {
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Timed(name = "http.rest.edges.object.post", absolute = true)
+    public Response postEdgeExtension(@PathParam("graphname") final String graphName, @PathParam("id") final String id, final MultivaluedMap<String, String> formParams) {
+        this.setRequestObject(formParams);
+        return this.executeEdgeExtension(graphName, id, HttpMethod.POST);
+    }
+
+    @POST
+    @Path("/{id}/{extension: .+}")
+    @Timed(name = "http.rest.edges.object.post", absolute = true)
+    public Response postEdgeExtension(@PathParam("graphname") final String graphName, @PathParam("id") final String id) {
         return this.executeEdgeExtension(graphName, id, HttpMethod.POST);
     }
 
     @GET
     @Path("/{id}/{extension: .+}")
-    public Response getEdgeExtension(@PathParam("graphname") String graphName, @PathParam("id") String id) {
+    @Timed(name = "http.rest.edges.object.get", absolute = true)
+    public Response getEdgeExtension(@PathParam("graphname") final String graphName, @PathParam("id") final String id) {
         return this.executeEdgeExtension(graphName, id, HttpMethod.GET);
     }
 
@@ -302,7 +345,7 @@ public class EdgeResource extends AbstractSubResource {
                     rexsterExtensions = findExtensionClasses(extensionSegmentSet);
                 } catch (ServiceConfigurationError sce) {
                     logger.error("ServiceLoader could not find a class referenced in com.tinkerpop.rexster.extension.RexsterExtension.");
-                    JSONObject error = generateErrorObject(
+                    final JSONObject error = generateErrorObject(
                             "Class specified in com.tinkerpop.rexster.extension.RexsterExtension could not be found.",
                             sce);
                     throw new WebApplicationException(Response.status(Status.NOT_FOUND).entity(error).build());
@@ -311,7 +354,7 @@ public class EdgeResource extends AbstractSubResource {
                 if (rexsterExtensions == null || rexsterExtensions.size() == 0) {
                     // extension was not found for some reason
                     logger.error("The [" + extensionSegmentSet + "] extension was not found for [" + graphName + "].  Check com.tinkerpop.rexster.extension.RexsterExtension file in META-INF.services.");
-                    JSONObject error = generateErrorObject(
+                    final JSONObject error = generateErrorObject(
                             "The [" + extensionSegmentSet + "] extension was not found for [" + graphName + "]");
                     throw new WebApplicationException(Response.status(Status.NOT_FOUND).entity(error).build());
                 }
@@ -321,8 +364,14 @@ public class EdgeResource extends AbstractSubResource {
 
                 if (methodToCall == null) {
                     // extension method was not found for some reason
+                    if (httpMethodRequested == HttpMethod.OPTIONS) {
+                        // intercept the options call and return the standard business
+                        // no need to stop the transaction here
+                        return buildOptionsResponse();
+                    }
+
                     logger.error("The [" + extensionSegmentSet + "] extension was not found for [" + graphName + "] with a HTTP method of [" + httpMethodRequested.name() + "].  Check com.tinkerpop.rexster.extension.RexsterExtension file in META-INF.services.");
-                    JSONObject error = generateErrorObject(
+                    final JSONObject error = generateErrorObject(
                             "The [" + extensionSegmentSet + "] extension was not found for [" + graphName + "] with a HTTP method of [" + httpMethodRequested.name() + "]");
                     throw new WebApplicationException(Response.status(Status.NOT_FOUND).entity(error).build());
                 }
@@ -332,16 +381,19 @@ public class EdgeResource extends AbstractSubResource {
 
             } catch (WebApplicationException wae) {
                 // already logged this...just throw it  up.
+                rag.tryRollback();
                 throw wae;
             } catch (Exception ex) {
                 logger.error("Dynamic invocation of the [" + extensionSegmentSet + "] extension failed.", ex);
 
                 if (ex.getCause() != null) {
-                    Throwable cause = ex.getCause();
+                    final Throwable cause = ex.getCause();
                     logger.error("It would be smart to trap this this exception within the extension and supply a good response to the user:" + cause.getMessage(), cause);
                 }
 
-                JSONObject error = generateErrorObjectJsonFail(ex);
+                rag.tryRollback();
+
+                final JSONObject error = generateErrorObjectJsonFail(ex);
                 throw new WebApplicationException(Response.status(Status.INTERNAL_SERVER_ERROR).entity(error).build());
             }
 
@@ -351,12 +403,22 @@ public class EdgeResource extends AbstractSubResource {
                 if (extResponse.isErrorResponse()) {
                     // an error was raised within the extension.  pass it back out as an error.
                     logger.warn("The [" + extensionSegmentSet + "] extension raised an error response.");
+
+                    if (methodToCall.getExtensionDefinition().autoCommitTransaction()) {
+                        rag.tryRollback();
+                    }
+
                     throw new WebApplicationException(Response.fromResponse(extResponse.getJerseyResponse()).build());
                 }
+
+                if (methodToCall.getExtensionDefinition().autoCommitTransaction()) {
+                    rag.tryCommit();
+                }
+
             } else {
                 // extension method is not returning the correct type...needs to be an ExtensionResponse
                 logger.error("The [" + extensionSegmentSet + "] extension does not return an ExtensionResponse.");
-                JSONObject error = generateErrorObject(
+                final JSONObject error = generateErrorObject(
                         "The [" + extensionSegmentSet + "] extension does not return an ExtensionResponse.");
                 throw new WebApplicationException(Response.status(Status.INTERNAL_SERVER_ERROR).entity(error).build());
             }
@@ -364,7 +426,7 @@ public class EdgeResource extends AbstractSubResource {
         } else {
             // namespace was not allowed
             logger.error("The [" + extensionSegmentSet + "] extension was not configured for [" + graphName + "]");
-            JSONObject error = generateErrorObject(
+            final JSONObject error = generateErrorObject(
                     "The [" + extensionSegmentSet + "] extension was not configured for [" + graphName + "]");
             throw new WebApplicationException(Response.status(Status.INTERNAL_SERVER_ERROR).entity(error).build());
         }
@@ -385,7 +447,9 @@ public class EdgeResource extends AbstractSubResource {
     @POST
     @Produces({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON, RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
     @Consumes({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON})
-    public Response postNullEdgeConsumesJson(@Context Request request, @PathParam("graphname") String graphName, JSONObject json) {
+    @Timed(name = "http.rest.edges.object.post", absolute = true)
+    public Response postNullEdgeConsumesJson(@Context final Request request,
+                                             @PathParam("graphname") final String graphName, final JSONObject json) {
         // initializes the request object with the data POSTed to the resource.  URI parameters
         // will then be ignored when the getRequestObject is called as the request object will
         // have already been established.
@@ -401,7 +465,9 @@ public class EdgeResource extends AbstractSubResource {
     @POST
     @Produces({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON, RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
     @Consumes({RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
-    public Response postNullEdgeConsumesTypedJson(@Context Request request, @PathParam("graphname") String graphName, JSONObject json) {
+    @Timed(name = "http.rest.edges.object.post", absolute = true)
+    public Response postNullEdgeConsumesTypedJson(@Context final Request request,
+                                                  @PathParam("graphname") final String graphName, final JSONObject json) {
         // initializes the request object with the data POSTed to the resource.  URI parameters
         // will then be ignored when the getRequestObject is called as the request object will
         // have already been established.
@@ -417,7 +483,8 @@ public class EdgeResource extends AbstractSubResource {
      */
     @POST
     @Produces({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON, RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
-    public Response postNullEdgeConsumesUri(@Context Request request, @PathParam("graphname") String graphName) {
+    @Timed(name = "http.rest.edges.object.post", absolute = true)
+    public Response postNullEdgeConsumesUri(@Context final Request request, @PathParam("graphname") final String graphName) {
         Variant v = request.selectVariant(producesVariantList);
         return this.postEdge(graphName, null, true, v);
     }
@@ -431,7 +498,10 @@ public class EdgeResource extends AbstractSubResource {
     @Path("/{id}")
     @Produces({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON, RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
     @Consumes({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON})
-    public Response postEdgeConsumesJson(@Context Request request, @PathParam("graphname") String graphName, @PathParam("id") String id, JSONObject json) {
+    @Timed(name = "http.rest.edges.object.post", absolute = true)
+    public Response postEdgeConsumesJson(@Context final Request request,
+                                         @PathParam("graphname") final String graphName,
+                                         @PathParam("id") final String id, final JSONObject json) {
         // initializes the request object with the data POSTed to the resource.  URI parameters
         // will then be ignored when the getRequestObject is called as the request object will
         // have already been established.
@@ -449,7 +519,10 @@ public class EdgeResource extends AbstractSubResource {
     @Path("/{id}")
     @Produces({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON, RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
     @Consumes({RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
-    public Response postEdgeConsumesTypedJson(@Context Request request, @PathParam("graphname") String graphName, @PathParam("id") String id, JSONObject json) {
+    @Timed(name = "http.rest.edges.object.post", absolute = true)
+    public Response postEdgeConsumesTypedJson(@Context final Request request,
+                                              @PathParam("graphname") final String graphName,
+                                              @PathParam("id") final String id, final JSONObject json) {
         this.setRequestObject(json);
         Variant v = request.selectVariant(producesVariantList);
         return postEdge(graphName, id, true, v);
@@ -463,12 +536,16 @@ public class EdgeResource extends AbstractSubResource {
     @POST
     @Path("/{id}")
     @Produces({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON, RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
-    public Response postEdgeConsumesUri(@Context Request request, @PathParam("graphname") String graphName, @PathParam("id") String id) {
+    @Timed(name = "http.rest.edges.object.post", absolute = true)
+    public Response postEdgeConsumesUri(@Context final Request request,
+                                        @PathParam("graphname") final String graphName,
+                                        @PathParam("id") final String id) {
         Variant v = request.selectVariant(producesVariantList);
         return postEdge(graphName, id, true, v);
     }
 
-    private Response postEdge(final @PathParam("graphname") String graphName, final @PathParam("id") String id, final boolean parseTypes, final Variant variant) {
+    private Response postEdge(final @PathParam("graphname") String graphName, final @PathParam("id") String id,
+                              final boolean parseTypes, final Variant variant) {
 
         final RexsterApplicationGraph rag = this.getRexsterApplicationGraph(graphName);
         final Graph graph = rag.getGraph();
@@ -529,10 +606,11 @@ public class EdgeResource extends AbstractSubResource {
                         }
                     }
 
-                    final List<String> returnKeys = RequestObjectHelper.getReturnKeys(theRequestObject);
-                    final JSONObject elementJson = GraphSONUtility.jsonFromElement(edge, returnKeys, showTypes);
+                    final GraphSONMode mode = showTypes ? GraphSONMode.EXTENDED : GraphSONMode.NORMAL;
+                    final Set<String> returnKeys = RequestObjectHelper.getReturnKeys(theRequestObject);
+                    final JSONObject elementJson = GraphSONUtility.jsonFromElement(edge, returnKeys, mode);
 
-                    rag.tryStopTransactionSuccess();
+                    rag.tryCommit();
 
                     // some graph implementations close scope at the close of the transaction so we generate the
                     // JSON before the transaction but set the id after for graphs that don't generate the id
@@ -564,10 +642,10 @@ public class EdgeResource extends AbstractSubResource {
 
 
         } catch (WebApplicationException wae) {
-            rag.tryStopTransactionFailure();
+            rag.tryRollback();
             throw wae;
         } catch (Exception ex) {
-            rag.tryStopTransactionFailure();
+            rag.tryRollback();
             JSONObject error = generateErrorObject("Transaction failed on POST of edge.", ex);
             throw new WebApplicationException(Response.status(Status.INTERNAL_SERVER_ERROR).entity(error).build());
         }
@@ -584,6 +662,7 @@ public class EdgeResource extends AbstractSubResource {
     @Path("/{id}")
     @Produces({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON, RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
     @Consumes({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON})
+    @Timed(name = "http.rest.edges.object.put", absolute = true)
     public Response putEdgeConsumesJson(@Context Request request, @PathParam("graphname") String graphName, @PathParam("id") String id, JSONObject json) {
         // initializes the request object with the data POSTed to the resource.  URI parameters
         // will then be ignored when the getRequestObject is called as the request object will
@@ -602,6 +681,7 @@ public class EdgeResource extends AbstractSubResource {
     @Path("/{id}")
     @Produces({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON, RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
     @Consumes({RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
+    @Timed(name = "http.rest.edges.object.put", absolute = true)
     public Response putEdgeConsumesTypedJson(@Context Request request, @PathParam("graphname") String graphName, @PathParam("id") String id, JSONObject json) {
         this.setRequestObject(json);
         Variant v = request.selectVariant(producesVariantList);
@@ -616,6 +696,7 @@ public class EdgeResource extends AbstractSubResource {
     @PUT
     @Path("/{id}")
     @Produces({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON, RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
+    @Timed(name = "http.rest.edges.object.put", absolute = true)
     public Response putEdgeOnUri(@Context Request request, @PathParam("graphname") String graphName, @PathParam("id") String id) {
         Variant v = request.selectVariant(producesVariantList);
         return this.putEdge(graphName, id, true, v);
@@ -647,7 +728,8 @@ public class EdgeResource extends AbstractSubResource {
             }});
 
             final JSONObject theRequestObject = this.getRequestObject();
-            final List<String> returnKeys = RequestObjectHelper.getReturnKeys(theRequestObject);
+            final GraphSONMode mode = showTypes ? GraphSONMode.EXTENDED : GraphSONMode.NORMAL;
+            final Set<String> returnKeys = RequestObjectHelper.getReturnKeys(theRequestObject);
 
             final Iterator keys = theRequestObject.keys();
             while (keys.hasNext()) {
@@ -657,9 +739,9 @@ public class EdgeResource extends AbstractSubResource {
                 }
             }
 
-            final JSONObject elementJson = GraphSONUtility.jsonFromElement(edge, returnKeys, showTypes);
+            final JSONObject elementJson = GraphSONUtility.jsonFromElement(edge, returnKeys, mode);
 
-            rag.tryStopTransactionSuccess();
+            rag.tryCommit();
 
             // some graph implementations close scope at the close of the transaction so we generate the
             // JSON before the transaction but set the id after for graphs that don't generate the id
@@ -678,10 +760,10 @@ public class EdgeResource extends AbstractSubResource {
             this.resultObject.put(Tokens.QUERY_TIME, sh.stopWatch());
 
         } catch (WebApplicationException wae) {
-            rag.tryStopTransactionFailure();
+            rag.tryRollback();
             throw wae;
         } catch (Exception ex) {
-            rag.tryStopTransactionFailure();
+            rag.tryRollback();
 
             logger.error(ex);
 
@@ -704,6 +786,7 @@ public class EdgeResource extends AbstractSubResource {
     @DELETE
     @Path("/{id}")
     @Produces({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON, RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
+    @Timed(name = "http.rest.edges.object.delete", absolute = true)
     public Response deleteEdge(@PathParam("graphname") String graphName, @PathParam("id") String id) {
 
         final RexsterApplicationGraph rag = this.getRexsterApplicationGraph(graphName);
@@ -729,21 +812,21 @@ public class EdgeResource extends AbstractSubResource {
                 throw new WebApplicationException(Response.status(Status.NOT_FOUND).entity(error).build());
             }
 
-            rag.tryStopTransactionSuccess();
+            rag.tryCommit();
 
             this.resultObject.put(Tokens.QUERY_TIME, sh.stopWatch());
         } catch (JSONException ex) {
             logger.error(ex);
 
-            rag.tryStopTransactionFailure();
+            rag.tryRollback();
 
             final JSONObject error = generateErrorObjectJsonFail(ex);
             throw new WebApplicationException(Response.status(Status.INTERNAL_SERVER_ERROR).entity(error).build());
         } catch (WebApplicationException wae) {
-            rag.tryStopTransactionFailure();
+            rag.tryRollback();
             throw wae;
         } catch (Exception ex) {
-            rag.tryStopTransactionFailure();
+            rag.tryRollback();
             final JSONObject error = generateErrorObject("Transaction failed on DELETE of edge.", ex);
             throw new WebApplicationException(Response.status(Status.INTERNAL_SERVER_ERROR).entity(error).build());
         }

@@ -1,18 +1,19 @@
 package com.tinkerpop.rexster;
 
+import com.tinkerpop.blueprints.Compare;
+import com.tinkerpop.blueprints.Direction;
 import com.tinkerpop.blueprints.Edge;
 import com.tinkerpop.blueprints.Query;
 import com.tinkerpop.blueprints.Vertex;
-import com.tinkerpop.blueprints.util.DefaultQuery;
-import com.tinkerpop.gremlin.pipes.filter.LabelFilterPipe;
-import com.tinkerpop.pipes.Pipe;
-import com.tinkerpop.pipes.filter.FilterPipe;
-import com.tinkerpop.blueprints.util.VerticesFromEdgesIterable;
-import com.tinkerpop.blueprints.Direction;
+import com.tinkerpop.blueprints.VertexQuery;
+import com.tinkerpop.blueprints.util.DefaultVertexQuery;
 import com.tinkerpop.blueprints.util.MultiIterable;
-import java.util.Arrays;
+import com.tinkerpop.blueprints.util.VerticesFromEdgesIterable;
+import com.tinkerpop.pipes.Pipe;
+import com.tinkerpop.pipes.filter.LabelFilterPipe;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Hashtable;
 import java.util.Set;
 
@@ -53,6 +54,11 @@ public class MockVertex implements Vertex {
         return this.properties.remove(key);
     }
 
+    @Override
+    public void remove() {
+        throw new UnsupportedOperationException();
+    }
+
     public void setProperty(String key, Object value) {
         this.properties.put(key, value);
     }
@@ -61,7 +67,7 @@ public class MockVertex implements Vertex {
         if (labels.length == 0) {
             return this.outEdges;
         } else {
-            Pipe pipe = new LabelFilterPipe(labels[0], FilterPipe.Filter.EQUAL);
+            Pipe pipe = new LabelFilterPipe(Compare.EQUAL, labels);
             pipe.setStarts(this.outEdges);
             return pipe;
         }
@@ -71,7 +77,7 @@ public class MockVertex implements Vertex {
         if (labels.length == 0) {
             return this.inEdges;
         } else {
-            Pipe pipe = new LabelFilterPipe(labels[0], FilterPipe.Filter.EQUAL);
+            Pipe pipe = new LabelFilterPipe(Compare.EQUAL, labels);
             pipe.setStarts(this.inEdges);
             return pipe;
         }
@@ -92,7 +98,12 @@ public class MockVertex implements Vertex {
     }
 
 
-    public Query query() {
-        return new DefaultQuery(this);
+    public VertexQuery query() {
+        return new DefaultVertexQuery(this);
+    }
+
+    @Override
+    public Edge addEdge(String label, Vertex vertex) {
+        throw new UnsupportedOperationException();
     }
 }

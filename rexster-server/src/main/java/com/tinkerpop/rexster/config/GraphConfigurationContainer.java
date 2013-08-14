@@ -15,6 +15,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * @author Stephen Mallette (http://stephen.genoprime.com)
+ */
 public class GraphConfigurationContainer {
 
     protected static final Logger logger = Logger.getLogger(GraphConfigurationContainer.class);
@@ -49,25 +52,16 @@ public class GraphConfigurationContainer {
                         // their attempt to be created
                         try {
                             final Graph graph = getGraphFromConfiguration(graphConfig);
-                            final RexsterApplicationGraph rag = new RexsterApplicationGraph(graphName, graph);
-
-                            // loads extensions that are allowed to be served for this graph
-                            final List extensionConfigs = graphConfig.getList(Tokens.REXSTER_GRAPH_EXTENSIONS_ALLOWS_PATH);
-                            rag.loadAllowableExtensions(extensionConfigs);
-
-                            // loads extension configuration for this graph
-                            final List<HierarchicalConfiguration> extensionConfigurations = graphConfig.configurationsAt(Tokens.REXSTER_GRAPH_EXTENSIONS_PATH);
-                            rag.loadExtensionsConfigurations(extensionConfigurations);
-
+                            final RexsterApplicationGraph rag = new RexsterApplicationGraph(graphName, graph, graphConfig);
                             this.graphs.put(rag.getGraphName(), rag);
 
                             logger.info("Graph " + graphName + " - " + graph + " loaded");
                         } catch (GraphConfigurationException gce) {
                             logger.warn("Could not load graph " + graphName + ". Please check the XML configuration.");
-                            logger.warn(gce.getMessage());
+                            logger.warn(gce.getMessage(), gce);
 
                             if (gce.getCause() != null) {
-                                logger.warn(gce.getCause().getMessage());
+                                logger.warn(gce.getCause().getMessage(), gce.getCause());
                             }
 
                             failedConfigurations.add(graphConfig);
@@ -136,9 +130,13 @@ public class GraphConfigurationContainer {
             }
 
         } catch (NoClassDefFoundError err) {
-            throw new GraphConfigurationException("GraphConfiguration [" + graphConfigurationType + "] could not instantiate a class [" + err.getMessage() + "].  Ensure that it is in Rexste's path.");
+            throw new GraphConfigurationException(String.format(
+                    "GraphConfiguration [%s] could not instantiate a class [%s].  Ensure that it is in Rexster's path.",
+                    graphConfigurationType, err.getMessage()));
         } catch (Exception ex) {
-            throw new GraphConfigurationException("GraphConfiguration could not be found or otherwise instantiated:." + graphConfigurationType, ex);
+            throw new GraphConfigurationException(String.format(
+                    "GraphConfiguration could not be found or otherwise instantiated: [%s]. Ensure that it is in Rexster's path.",
+                    graphConfigurationType), ex);
         }
 
         return graph;

@@ -1,12 +1,18 @@
 package com.tinkerpop.rexster.gremlin.converter;
 
+import com.tinkerpop.pipes.util.iterators.SingleIterator;
+import org.apache.commons.collections.iterators.ArrayIterator;
+
 import java.io.Writer;
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * @author Stephen Mallette (http://stephen.genoprime.com)
+ * @author Blake Eggleston (bdeggleston.github.com)
+ */
 public class ConsoleResultConverter implements ResultConverter<List<String>> {
     private static final String LINE_SEPARATOR = System.getProperty("line.separator");
 
@@ -18,40 +24,31 @@ public class ConsoleResultConverter implements ResultConverter<List<String>> {
 
     public List<String> convert(final Object result) throws Exception {
         try {
-            List<Object> resultLines = new ArrayList<Object>();
-            if (result == null) {
-                resultLines = new ArrayList<Object>();
-            } else if (result instanceof Iterable) {
-                for (Object o : (Iterable) result) {
-                    resultLines.add(o);
-                }
+            final List<Object> resultLines = new ArrayList<Object>();
+            final Iterator itty;
+            if (result instanceof Iterable) {
+                itty = ((Iterable) result).iterator();
             } else if (result instanceof Iterator) {
-                // Table is handled through here and the toString() to get it formatted.
-                Iterator itty = (Iterator) result;
-                while (itty.hasNext()) {
-                    resultLines.add(itty.next());
-                }
-            } else if (result.getClass().isArray()) {
-                int length = Array.getLength(result);
-                for (int ix = 0; ix < length; ix++) {
-                    resultLines.add(Array.get(result, ix).toString());
-                }
+                itty = (Iterator) result;
+            } else if (result instanceof Object[]) {
+                itty = new ArrayIterator((Object[]) result);
             } else if (result instanceof Map) {
-                Map map = (Map) result;
-                for (Object key : map.keySet()) {
-                    resultLines.add(key + "=" + map.get(key).toString());
-                }
+                itty = ((Map) result).entrySet().iterator();
             } else if (result instanceof Throwable) {
-                resultLines.add(((Throwable) result).getMessage());
+                itty = new SingleIterator<Object>(((Throwable) result).getMessage());
             } else {
-                resultLines.add(result);
+                itty = new SingleIterator<Object>(result);
+            }
+
+            while (itty.hasNext()) {
+                resultLines.add(itty.next());
             }
 
             // Handle output data
-            List<String> outputLines = new ArrayList<String>();
+            final List<String> outputLines = new ArrayList<String>();
 
             // Handle eval() result
-            String[] printLines = this.outputWriter.toString().split(LINE_SEPARATOR);
+            final String[] printLines = this.outputWriter.toString().split(LINE_SEPARATOR);
 
             if (printLines.length > 0 && printLines[0].length() > 0) {
                 for (String printLine : printLines) {
@@ -68,7 +65,7 @@ public class ConsoleResultConverter implements ResultConverter<List<String>> {
 
             return outputLines;
         } catch (Exception ex) {
-            ArrayList<String> resultList = new ArrayList<String>();
+            final ArrayList<String> resultList = new ArrayList<String>();
             resultList.add(ex.getMessage());
             return resultList;
         }

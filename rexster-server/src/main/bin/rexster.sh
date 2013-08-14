@@ -1,10 +1,16 @@
 #!/bin/bash
 
 CP=$( echo `dirname $0`/../lib/*.jar . | sed 's/ /:/g')
-CP=$CP:$(find `dirname $0`/../ext/ -name "*.jar" | tr '\n' ':')
-#echo $CP
+CP=$CP:$(find -L `dirname $0`/../ext/ -name "*.jar" | tr '\n' ':')
+
+REXSTER_EXT=../ext
 
 PUBLIC=`dirname $0`/../public/
+EXTRA=
+
+if [ $1 = "-s" ] ; then
+    EXTRA="-wr $PUBLIC"
+fi
 
 # Find Java
 if [ "$JAVA_HOME" = "" ] ; then
@@ -19,7 +25,7 @@ if [ "$JAVA_OPTIONS" = "" ] ; then
 fi
 
 # Launch the application
-$JAVA $JAVA_OPTIONS -cp $CP com.tinkerpop.rexster.WebServer $@ -wr $PUBLIC
+$JAVA $JAVA_OPTIONS -cp $CP com.tinkerpop.rexster.Application $@ $EXTRA
 
 # Return the program's exit code
 exit $?

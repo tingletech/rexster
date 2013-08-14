@@ -1,11 +1,13 @@
 package com.tinkerpop.rexster;
 
+import com.codahale.metrics.annotation.Timed;
 import com.tinkerpop.blueprints.Edge;
 import com.tinkerpop.blueprints.Element;
 import com.tinkerpop.blueprints.Graph;
 import com.tinkerpop.blueprints.KeyIndexableGraph;
 import com.tinkerpop.blueprints.Vertex;
 import com.tinkerpop.rexster.extension.HttpMethod;
+import com.tinkerpop.rexster.server.RexsterApplication;
 import org.apache.log4j.Logger;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
@@ -51,8 +53,10 @@ public class KeyIndexResource extends AbstractSubResource {
 
     @GET
     @Produces({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON, RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
+    @Timed(name = "http.rest.key-indices.collection.get", absolute = true)
     public Response getKeyIndices(@PathParam("graphname") final String graphName) {
         final KeyIndexableGraph graph = this.getKeyIndexableGraph(graphName);
+        final RexsterApplicationGraph rag = this.getRexsterApplicationGraph(graphName);
         
         try {
             final JSONArray keyVertexArray = new JSONArray();
@@ -65,7 +69,7 @@ public class KeyIndexResource extends AbstractSubResource {
                 keyEdgeArray.put(key);
             }
 
-            this.resultObject.put(Tokens.KEYS, new JSONObject(new HashMap() {{
+            this.resultObject.put(Tokens.RESULTS, new JSONObject(new HashMap() {{
                 put(Tokens.VERTEX, keyVertexArray);
                 put(Tokens.EDGE, keyEdgeArray);
             }}));
@@ -76,6 +80,8 @@ public class KeyIndexResource extends AbstractSubResource {
 
             final JSONObject error = generateErrorObjectJsonFail(ex);
             throw new WebApplicationException(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(error).build());
+        } finally {
+            rag.tryCommit();
         }
 
         return Response.ok(this.resultObject).build();
@@ -91,6 +97,7 @@ public class KeyIndexResource extends AbstractSubResource {
     @GET
     @Path("/{clazz}")
     @Produces({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON, RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
+    @Timed(name = "http.rest.key-indices.class.collection.get", absolute = true)
     public Response getIndexKeys(@PathParam("graphname") final String graphName, @PathParam("clazz") final String clazz) {
         final Class<? extends Element> keyClass;
         if (clazz.equals(Tokens.VERTEX)) {
@@ -102,6 +109,7 @@ public class KeyIndexResource extends AbstractSubResource {
         }
         
         final KeyIndexableGraph graph = this.getKeyIndexableGraph(graphName);
+        final RexsterApplicationGraph rag = this.getRexsterApplicationGraph(graphName);
 
         try {
             final JSONArray keyArray = new JSONArray();
@@ -117,6 +125,8 @@ public class KeyIndexResource extends AbstractSubResource {
 
             final JSONObject error = generateErrorObjectJsonFail(ex);
             throw new WebApplicationException(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(error).build());
+        } finally {
+            rag.tryCommit();
         }
 
         return Response.ok(this.resultObject).build();
@@ -133,6 +143,7 @@ public class KeyIndexResource extends AbstractSubResource {
     @DELETE
     @Path("{clazz}/{keyName}")
     @Produces({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON, RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
+    @Timed(name = "http.rest.key-indices.object.delete", absolute = true)
     public Response deleteIndexKey(@PathParam("graphname") final String graphName, @PathParam("clazz") final String clazz, 
                                    @PathParam("keyName") final String keyName) {
         final Class keyClass;
@@ -154,13 +165,13 @@ public class KeyIndexResource extends AbstractSubResource {
         try {
             graph.dropKeyIndex(keyName, keyClass);
 
-            rag.tryStopTransactionSuccess();
+            rag.tryCommit();
 
             this.resultObject.put(Tokens.QUERY_TIME, this.sh.stopWatch());
         } catch (JSONException ex) {
             logger.error(ex);
 
-            rag.tryStopTransactionFailure();
+            rag.tryRollback();
 
             final JSONObject error = generateErrorObjectJsonFail(ex);
             throw new WebApplicationException(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(error).build());
@@ -173,6 +184,7 @@ public class KeyIndexResource extends AbstractSubResource {
     @POST
     @Path("/{clazz}/{keyName}")
     @Produces({MediaType.APPLICATION_JSON, RexsterMediaType.APPLICATION_REXSTER_JSON, RexsterMediaType.APPLICATION_REXSTER_TYPED_JSON})
+    @Timed(name = "http.rest.key-indices.class.object.post", absolute = true)
     public Response postIndexKey(@PathParam("graphname") final String graphName, @PathParam("clazz") final String clazz,
                                  @PathParam("keyName") final String keyName) {
 
@@ -195,13 +207,13 @@ public class KeyIndexResource extends AbstractSubResource {
         try {
             graph.createKeyIndex(keyName, keyClass);
 
-            rag.tryStopTransactionSuccess();
+            rag.tryCommit();
 
             this.resultObject.put(Tokens.QUERY_TIME, this.sh.stopWatch());
         } catch (JSONException ex) {
             logger.error(ex);
 
-            rag.tryStopTransactionFailure();
+            rag.tryRollback();
 
             final JSONObject error = generateErrorObjectJsonFail(ex);
             throw new WebApplicationException(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(error).build());

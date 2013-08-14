@@ -13,5 +13,4 @@ public class TinkerGraphGraphConfigurationTest {
         Configuration graphConfig = new HierarchicalConfiguration();
         configuration.configureGraphInstance(graphConfig);
     }
-
 }

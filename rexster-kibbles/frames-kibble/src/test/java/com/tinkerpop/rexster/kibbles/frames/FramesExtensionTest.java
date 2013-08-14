@@ -63,17 +63,15 @@ public class FramesExtensionTest {
         } catch (ConfigurationException ex) {
         }
 
-        this.rag = new RexsterApplicationGraph("tinkergraph", this.graph);
-
         // allow all namespaces for purpose of testing
         List<String> allowedNamespaces = new ArrayList<String>();
         allowedNamespaces.add("*:*");
-        this.rag.loadAllowableExtensions(allowedNamespaces);
 
         // configure the frames extension
         List<HierarchicalConfiguration> configs = new ArrayList<HierarchicalConfiguration>();
         configs.add(xmlConfig);
-        this.rag.loadExtensionsConfigurations(configs);
+
+        this.rag = new RexsterApplicationGraph("tinkergraph", this.graph, allowedNamespaces, configs);
     }
 
     @Test
@@ -102,7 +100,7 @@ public class FramesExtensionTest {
         final UriInfo uri = mockTheUri(false, "");
 
         // can do a slimmed down RexsterResourceContext
-        this.ctx = new RexsterResourceContext(this.rag, uri, null, null, null, null, null);
+        this.ctx = new RexsterResourceContext(this.rag, uri, null, null, null, null, null, null);
 
         ExtensionResponse extResp = this.framesExtension.doFramesWorkOnVertex(this.ctx, this.graph, this.graph.getVertex(1));
 
@@ -124,7 +122,7 @@ public class FramesExtensionTest {
         final UriInfo uri = mockTheUri(true, "not-a-frame-in-config");
 
         // can do a slimmed down RexsterResourceContext
-        this.ctx = new RexsterResourceContext(this.rag, uri, null, null, null, null, null);
+        this.ctx = new RexsterResourceContext(this.rag, uri, null, null, null, null, null, null);
 
         ExtensionResponse extResp = this.framesExtension.doFramesWorkOnVertex(this.ctx, this.graph, this.graph.getVertex(1));
 
@@ -145,7 +143,7 @@ public class FramesExtensionTest {
         final UriInfo uri = mockTheUri(true, "notreal");
 
         // can do a slimmed down RexsterResourceContext
-        this.ctx = new RexsterResourceContext(this.rag, uri, null, null, null, null, null);
+        this.ctx = new RexsterResourceContext(this.rag, uri, null, null, null, null, null, null);
 
         ExtensionResponse extResp = this.framesExtension.doFramesWorkOnVertex(this.ctx, this.graph, this.graph.getVertex(1));
 
@@ -166,7 +164,7 @@ public class FramesExtensionTest {
         final UriInfo uri = mockTheUri(true, "person");
 
         // can do a slimmed down RexsterResourceContext
-        this.ctx = new RexsterResourceContext(this.rag, uri, null, null, null, null, null);
+        this.ctx = new RexsterResourceContext(this.rag, uri, null, null, null, null, null, null);
 
         ExtensionResponse extResp = this.framesExtension.doFramesWorkOnVertex(this.ctx, this.graph, this.graph.getVertex(1));
 
@@ -189,7 +187,7 @@ public class FramesExtensionTest {
         final UriInfo uri = mockTheUri(false, "");
 
         // can do a slimmed down RexsterResourceContext
-        this.ctx = new RexsterResourceContext(this.rag, uri, null, null, null, null, null);
+        this.ctx = new RexsterResourceContext(this.rag, uri, null, null, null, null, null, null);
 
         ExtensionResponse extResp = this.framesExtension.doFramesWorkOnEdge(this.ctx, this.graph, this.graph.getEdge(11), "in");
 
@@ -211,7 +209,7 @@ public class FramesExtensionTest {
         final UriInfo uri = mockTheUri(true, "not-a-frame-in-config");
 
         // can do a slimmed down RexsterResourceContext
-        this.ctx = new RexsterResourceContext(this.rag, uri, null, null, null, null, null);
+        this.ctx = new RexsterResourceContext(this.rag, uri, null, null, null, null, null, null);
 
         ExtensionResponse extResp = this.framesExtension.doFramesWorkOnEdge(this.ctx, this.graph, this.graph.getEdge(11), "in");
 
@@ -232,7 +230,7 @@ public class FramesExtensionTest {
         final UriInfo uri = mockTheUri(true, "notreal");
 
         // can do a slimmed down RexsterResourceContext
-        this.ctx = new RexsterResourceContext(this.rag, uri, null, null, null, null, null);
+        this.ctx = new RexsterResourceContext(this.rag, uri, null, null, null, null, null, null);
 
         ExtensionResponse extResp = this.framesExtension.doFramesWorkOnEdge(this.ctx, this.graph, this.graph.getEdge(11), "in");
 
@@ -253,7 +251,7 @@ public class FramesExtensionTest {
         final UriInfo uri = mockTheUri(true, "created");
 
         // can do a slimmed down RexsterResourceContext
-        this.ctx = new RexsterResourceContext(this.rag, uri, null, null, null, null, null);
+        this.ctx = new RexsterResourceContext(this.rag, uri, null, null, null, null, null, null);
 
         ExtensionResponse extResp = this.framesExtension.doFramesWorkOnEdge(this.ctx, this.graph, this.graph.getEdge(11), "in");
 
@@ -274,7 +272,7 @@ public class FramesExtensionTest {
         final UriInfo uri = mockTheUri(true, "created");
 
         // can do a slimmed down RexsterResourceContext
-        this.ctx = new RexsterResourceContext(this.rag, uri, null, null, null, null, null);
+        this.ctx = new RexsterResourceContext(this.rag, uri, null, null, null, null, null, null);
 
         ExtensionResponse extResp = this.framesExtension.doFramesWorkOnEdge(this.ctx, this.graph, this.graph.getEdge(11), null);
 
@@ -295,7 +293,7 @@ public class FramesExtensionTest {
         final UriInfo uri = mockTheUri(true, "created");
 
         // can do a slimmed down RexsterResourceContext
-        this.ctx = new RexsterResourceContext(this.rag, uri, null, null, null, new ExtensionMethod(null, null, null, null), null);
+        this.ctx = new RexsterResourceContext(this.rag, uri, null, null, null, new ExtensionMethod(null, null, null, null), null, null);
 
         ExtensionResponse extResp = this.framesExtension.doFramesWorkOnEdge(this.ctx, this.graph, this.graph.getEdge(11), "bad-direction");
 

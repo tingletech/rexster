@@ -59,6 +59,23 @@ public class VertexResourceIntegrationTest extends AbstractGraphResourceIntegrat
     }
 
     @Test
+    public void getVerticesByKeyIndexStatusOk() {
+        for (GraphTestHolder testGraph : this.testGraphs) {
+            if (testGraph.getFeatures().supportsVertexIteration) {
+                ClientResponse graphResponse = doGraphGet(testGraph, "vertices", "key=name&value=marko");
+
+                Assert.assertNotNull(graphResponse);
+                Assert.assertEquals(ClientResponse.Status.OK, graphResponse.getClientResponseStatus());
+
+                JSONObject vertexJson = graphResponse.getEntity(JSONObject.class);
+                Assert.assertNotNull(vertexJson);
+
+                Assert.assertEquals(1, vertexJson.optJSONArray(Tokens.RESULTS).length());
+            }
+        }
+    }
+
+    @Test
     public void getVerticesPagingStatusOk() {
         for (GraphTestHolder testGraph : this.testGraphs) {
             if (testGraph.getFeatures().supportsVertexIteration) {
@@ -192,7 +209,7 @@ public class VertexResourceIntegrationTest extends AbstractGraphResourceIntegrat
             Assert.assertEquals(Tokens.VERTEX, json.optJSONArray(Tokens.RESULTS).optJSONObject(0).optString(Tokens._TYPE));
 
             // get out vertices filtered by label and limited
-            graphResponse = doGraphGet(testGraph, "vertices/" + encode(id) + "/out", "_label=[knows]&_limit=1");
+            graphResponse = doGraphGet(testGraph, "vertices/" + encode(id) + "/out", "_label=[knows]&_take=1");
 
             Assert.assertNotNull(graphResponse);
             Assert.assertEquals(ClientResponse.Status.OK, graphResponse.getClientResponseStatus());

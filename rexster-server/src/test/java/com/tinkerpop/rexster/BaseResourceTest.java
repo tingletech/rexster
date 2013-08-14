@@ -25,11 +25,13 @@ import java.security.Principal;
 import java.util.Collection;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.Hashtable;
 import java.util.Locale;
 import java.util.Map;
 
 /**
  * @author Marko A. Rodriguez (http://markorodriguez.com)
+ * @author Stephen Mallette (http://stephen.genoprime.com)
  */
 public class BaseResourceTest {
 
@@ -181,7 +183,7 @@ public class BaseResourceTest {
         }
 
         public Enumeration getParameterNames() {
-            return null;
+            return new Hashtable(map).keys();
         }
 
         public String[] getParameterValues(String arg0) {
